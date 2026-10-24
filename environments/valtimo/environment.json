@@ -1,0 +1,297 @@
+{
+  "title": "Valtimo",
+  "version": "GZAC 13.4.1 (demo)",
+  "summary": "Zaakgericht werken: een aanvraag evenementenvergunning behandelen, stap voor stap, zoals een gemeente dat doet.",
+  "url": "http://localhost/",
+  "login": "launcher / launcher (of admin / admin)",
+  "links": [
+    {
+      "login": "inloggen als burger met DigiD-simulatie",
+      "title": "Burgerformulier (Open Formulieren)",
+      "url": "http://localhost:8003/leningaanvragen/"
+    },
+    {
+      "login": "via de Valtimo-login: launcher / launcher",
+      "title": "Open Formulieren beheer",
+      "url": "http://localhost:8003/admin/"
+    },
+    {
+      "login": "launcher / launcher of admin / admin",
+      "title": "Open Zaak beheer",
+      "url": "http://localhost:8001/admin/"
+    },
+    {
+      "login": "launcher / launcher of admin / admin",
+      "title": "Objecten beheer",
+      "url": "http://localhost:8010/admin/"
+    },
+    {
+      "login": "launcher / launcher of admin / admin",
+      "title": "Objecttypen beheer",
+      "url": "http://localhost:8011/admin/"
+    },
+    {
+      "login": "launcher / launcher of admin / admin",
+      "title": "Open Notificaties beheer",
+      "url": "http://localhost:8002/admin/"
+    },
+    {
+      "login": "launcher / launcher of admin / admin",
+      "title": "Keycloak beheer",
+      "url": "http://localhost:8081/auth/admin/"
+    }
+  ],
+  "license": "EUPL-1.2",
+  "standards": [
+    "Zaakgericht werken (GZAC)",
+    "BPMN 2.0",
+    "DMN",
+    "OpenID Connect"
+  ],
+  "licences": {
+    "classes": [
+      {
+        "class": "unknown",
+        "name": "gzac-docker-compose"
+      },
+      {
+        "class": "open",
+        "name": "Valtimo backend libraries (GZAC)"
+      },
+      {
+        "class": "open",
+        "name": "Valtimo frontend libraries (GZAC)"
+      },
+      {
+        "class": "unknown",
+        "name": "GZAC evenementenvergunning demo (backend and frontend images)"
+      },
+      {
+        "class": "open",
+        "name": "Keycloak"
+      },
+      {
+        "class": "open",
+        "name": "PostgreSQL"
+      },
+      {
+        "class": "open",
+        "name": "PostGIS"
+      },
+      {
+        "class": "open",
+        "name": "RabbitMQ"
+      },
+      {
+        "class": "open",
+        "name": "Open Zaak"
+      },
+      {
+        "class": "open",
+        "name": "Open Notificaties"
+      },
+      {
+        "class": "open",
+        "name": "Objecten API"
+      },
+      {
+        "class": "open",
+        "name": "Objecttypen API"
+      },
+      {
+        "class": "open",
+        "name": "Open Formulieren"
+      },
+      {
+        "class": "open",
+        "name": "Redis"
+      },
+      {
+        "class": "open",
+        "name": "BusyBox"
+      },
+      {
+        "class": "open",
+        "name": "Docker Engine (dockerd)"
+      },
+      {
+        "class": "open",
+        "name": "Docker CLI"
+      },
+      {
+        "class": "open",
+        "name": "containerd"
+      },
+      {
+        "class": "open",
+        "name": "runc"
+      },
+      {
+        "class": "open",
+        "name": "Docker Compose"
+      },
+      {
+        "class": "open",
+        "name": "Ubuntu 24.04 LTS (guest VM)"
+      }
+    ],
+    "closed": [],
+    "counts": {
+      "AGPL-3.0-only OR SSPL-1.0 OR LicenseRef-RSALv2": 1,
+      "Apache-2.0": 6,
+      "EUPL-1.2": 7,
+      "GPL-2.0-only": 1,
+      "GPL-2.0-or-later": 1,
+      "LicenseRef-Ubuntu-main": 1,
+      "MPL-2.0": 1,
+      "PostgreSQL": 1
+    },
+    "level": "yellow",
+    "open": 19,
+    "reason": "Geen licentie gevonden: gzac-docker-compose, GZAC evenementenvergunning demo (backend and frontend images). Zonder licentie mag je het formeel niet zelf aanpassen of verspreiden. ",
+    "restricted": [],
+    "total": 21,
+    "unknown": [
+      "gzac-docker-compose",
+      "GZAC evenementenvergunning demo (backend and frontend images)"
+    ]
+  },
+  "components": [
+    {
+      "evidence": "no LICENSE/COPYING at 7159648 (only README.md, docker-compose.yaml, imports/); GitHub API: no licence",
+      "license": "NOASSERTION",
+      "name": "gzac-docker-compose",
+      "repo": "https://github.com/generiekzaakafhandelcomponent/gzac-docker-compose"
+    },
+    {
+      "evidence": "Maven Central com.ritense.valtimo:core:13.4.1.RELEASE POM <license> EUPL 1.2; LICENSE.MD (EUPL 1.2) on default branch (public tags stop at 13.2.1)",
+      "license": "EUPL-1.2",
+      "name": "Valtimo backend libraries (GZAC)",
+      "repo": "https://github.com/valtimo-platform/valtimo-backend-libraries"
+    },
+    {
+      "evidence": "npm @valtimo/components 13.4.1 license field EUPL-1.2; package.json EUPL-1.2 (no LICENSE file in repo)",
+      "license": "EUPL-1.2",
+      "name": "Valtimo frontend libraries (GZAC)",
+      "repo": "https://github.com/valtimo-platform/valtimo-frontend-libraries"
+    },
+    {
+      "evidence": "no public source repository found for the 13.4.1 demo images; no licence label in the image config or on Docker Hub",
+      "license": "NOASSERTION",
+      "name": "GZAC evenementenvergunning demo (backend and frontend images)",
+      "repo": "https://hub.docker.com/r/ritense/gzac-evenementenvergunning-demo-backend"
+    },
+    {
+      "evidence": "LICENSE.txt at tag 26.2.2",
+      "license": "Apache-2.0",
+      "name": "Keycloak",
+      "repo": "https://github.com/keycloak/keycloak"
+    },
+    {
+      "evidence": "COPYRIGHT (PostgreSQL Licence); image postgres:17.4",
+      "license": "PostgreSQL",
+      "name": "PostgreSQL",
+      "repo": "https://github.com/postgres/postgres"
+    },
+    {
+      "evidence": "COPYING (GPLv2) at tag 3.4.0; project states GPLv2 or later (known); image postgis/postgis:17-3.4",
+      "license": "GPL-2.0-or-later",
+      "name": "PostGIS",
+      "repo": "https://github.com/postgis/postgis"
+    },
+    {
+      "evidence": "LICENSE + LICENSE-MPL-RabbitMQ at tags v4.1.0 and v4.1.8 (images rabbitmq:4.1.0-management, 4.1-management = 4.1.8)",
+      "license": "MPL-2.0",
+      "name": "RabbitMQ",
+      "repo": "https://github.com/rabbitmq/rabbitmq-server"
+    },
+    {
+      "evidence": "LICENSE.md (EUPL v. 1.2) at tag 1.25.0",
+      "license": "EUPL-1.2",
+      "name": "Open Zaak",
+      "repo": "https://github.com/open-zaak/open-zaak"
+    },
+    {
+      "evidence": "LICENCE.md (EUPL v. 1.2) at tag 1.13.0",
+      "license": "EUPL-1.2",
+      "name": "Open Notificaties",
+      "repo": "https://github.com/open-zaak/open-notificaties"
+    },
+    {
+      "evidence": "LICENSE.md (EUPL v. 1.2) at tag 3.3.0",
+      "license": "EUPL-1.2",
+      "name": "Objecten API",
+      "repo": "https://github.com/maykinmedia/objects-api"
+    },
+    {
+      "evidence": "LICENSE.md (EUPL v. 1.2) at tag 3.3.0",
+      "license": "EUPL-1.2",
+      "name": "Objecttypen API",
+      "repo": "https://github.com/maykinmedia/objecttypes-api"
+    },
+    {
+      "evidence": "LICENSE.md (EUPL v. 1.2) at tag 3.1.9",
+      "license": "EUPL-1.2",
+      "name": "Open Formulieren",
+      "repo": "https://github.com/open-formulieren/open-forms"
+    },
+    {
+      "evidence": "LICENSE.txt at tag 8.2.2 (tri-licence since Redis 8)",
+      "license": "AGPL-3.0-only OR SSPL-1.0 OR LicenseRef-RSALv2",
+      "name": "Redis",
+      "repo": "https://github.com/redis/redis"
+    },
+    {
+      "evidence": "known (LICENSE: GPLv2 only); image busybox:1.37.0 (open-forms-busybox)",
+      "license": "GPL-2.0-only",
+      "name": "BusyBox",
+      "repo": "https://git.busybox.net/busybox"
+    },
+    {
+      "evidence": "LICENSE (default branch); static bundle docker-29.9.1.tgz, manifest valtimo.tooling",
+      "license": "Apache-2.0",
+      "name": "Docker Engine (dockerd)",
+      "repo": "https://github.com/moby/moby"
+    },
+    {
+      "evidence": "LICENSE (default branch); in docker-29.9.1.tgz",
+      "license": "Apache-2.0",
+      "name": "Docker CLI",
+      "repo": "https://github.com/docker/cli"
+    },
+    {
+      "evidence": "LICENSE (default branch); in docker-29.9.1.tgz",
+      "license": "Apache-2.0",
+      "name": "containerd",
+      "repo": "https://github.com/containerd/containerd"
+    },
+    {
+      "evidence": "LICENSE (default branch); in docker-29.9.1.tgz",
+      "license": "Apache-2.0",
+      "name": "runc",
+      "repo": "https://github.com/opencontainers/runc"
+    },
+    {
+      "evidence": "LICENSE (default branch); v5.6.0, manifest valtimo.tooling",
+      "license": "Apache-2.0",
+      "name": "Docker Compose",
+      "repo": "https://github.com/docker/compose"
+    },
+    {
+      "evidence": "a distribution: every package has its own licence (/usr/share/doc/*/copyright); Ubuntu's licence policy requires application software in main to be free software with full source code that may be modified and redistributed (exceptions: some firmware and fonts); the cloud image is built from main. Canonical's IP policy only limits the Ubuntu trademarks on modified copies (canonical.com/legal/intellectual-property-policy)",
+      "license": "LicenseRef-Ubuntu-main",
+      "name": "Ubuntu 24.04 LTS (guest VM)",
+      "repo": "https://cloud-images.ubuntu.com/releases/noble/release-20260911/"
+    }
+  ],
+  "health": {
+    "url": "http://localhost/"
+  },
+  "needs": {
+    "memory_gib": 8
+  },
+  "source": {
+    "url": "https://github.com/generiekzaakafhandelcomponent/gzac-docker-compose",
+    "rev": "7159648f21cab72fe0dab9ac27ef344b63495ae1"
+  }
+}

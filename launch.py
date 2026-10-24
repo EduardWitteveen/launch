@@ -231,6 +231,9 @@ def docker_memory_gib():
 
 def check(env):
     problems = []
+    if (env.get("needs") or {}).get("platform") == "dawo-usb":
+        return [f"{env['title']} werkt nog alleen vanaf de DAWO-USB-SSD (Kubernetes in een virtuele machine); "
+                "in Launch op deze computer komt het later."]
     mem = docker_memory_gib()
     if mem is None:
         problems.append("Docker draait niet. Start Docker Desktop en probeer het dan opnieuw.")
@@ -259,9 +262,12 @@ def cmd_start(eid, yes):
         if not yes:
             print("Niet gestart. Gebruik --yes om toch te starten.", file=sys.stderr)
             return 3
+    # Every other environment stops, also one that does not answer (yet): its
+    # containers would hold the ports this one needs.
     for other in catalog():
-        if other["id"] != eid and status_of(other)["state"] != "stopped":
-            print(f"Eerst stoppen: de {other['title']}-omgeving (er draait één omgeving tegelijk).")
+        if other["id"] != eid:
+            if status_of(other)["state"] != "stopped":
+                print(f"Eerst stoppen: de {other['title']}-omgeving (er draait één omgeving tegelijk).")
             cmd_stop(other["id"], quiet=True)
     if running_pid(eid):
         print(f"De {env['title']}-omgeving wordt al gestart.")

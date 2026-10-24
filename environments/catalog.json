@@ -1,6 +1,9 @@
 {
   "environments": [
+    "mijn-bureau",
     "tezza",
+    "nextcloud-commonground",
+    "valtimo",
     "haalcentraal"
   ]
 }

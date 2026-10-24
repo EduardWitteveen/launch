@@ -1,0 +1,40 @@
+# Our changes to Conduction's dossiq-compose.yaml (ConductionNL/dossiq, pinned
+# commit), kept apart from its file (#250). Applied as a second -f file. Each
+# change and why:
+#
+#   image: ...@sha256:...   pinned by digest (AGENTS rule 4); upstream's tags
+#                           float (16-alpine, 3.20, 34-apache), the exact tags
+#                           and digests are in the manifest
+#   *_VERSION               upstream floats to the newest release, pre-releases
+#                           included; pinned to the stable releases in the
+#                           manifest. Our driver has already unpacked exactly
+#                           these releases, verified by SHA-256, so upstream's
+#                           installer skips each app; the pins only say what
+#                           it would fetch otherwise
+#   mem_limit               the guest is shared; without a limit nothing stops
+#                           one container from taking all of it
+#
+# Not here, on purpose: upstream's install-apps and enable-apps scripts stay
+# as they are. The three apps beyond upstream's list (OpenCatalogi, Pipelinq,
+# Portaliq) are unpacked by our driver and enabled with occ after Nextcloud is
+# ready (apps/nextcloud-commonground/deploy.sh, phases apps and enable).
+# Nothing else differs from upstream: admin / admin, the port (8609), the
+# trusted domains and OVERWRITECLIURL are upstream's.
+
+services:
+  db:
+    image: docker.io/library/postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    mem_limit: 1g
+
+  app-installer:
+    image: docker.io/library/alpine:3.20.10@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+    mem_limit: 256m
+    environment:
+      OPENREGISTER_VERSION: "2.1.0"
+      THEMATIQ_VERSION: "1.2.10"
+      INTEGRIQ_VERSION: "0.4.4"
+      DOSSIQ_VERSION: "0.4.0"
+
+  nextcloud:
+    image: docker.io/library/nextcloud:34.0.5-apache@sha256:6d69b9052afab060afe8d004e9b00820f95a040b42db967b31eef9a48661e8bc
+    mem_limit: 3g

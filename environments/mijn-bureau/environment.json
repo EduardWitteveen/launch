@@ -1,0 +1,312 @@
+{
+  "title": "Mijn Bureau",
+  "version": "2026-07-27 (b2ae545)",
+  "summary": "Samenwerken in de browser: bestanden, documenten samen bewerken en chatten, met één keer inloggen.",
+  "url": "https://bureaublad.dawo.internal",
+  "login": "launcher / launcher",
+  "license": "EUPL-1.2",
+  "standards": [
+    "OpenID Connect (NL GOV-profiel)",
+    "OAuth 2.0 (NL GOV-profiel)",
+    "ODF",
+    "TLS",
+    "HTTPS en HSTS"
+  ],
+  "licences": {
+    "classes": [
+      {
+        "class": "open",
+        "name": "Mijn Bureau (mijn-bureau-infra)"
+      },
+      {
+        "class": "open",
+        "name": "Ubuntu 24.04 LTS (guest VM)"
+      },
+      {
+        "class": "open",
+        "name": "K3s"
+      },
+      {
+        "class": "open",
+        "name": "Traefik (bundled with K3s)"
+      },
+      {
+        "class": "open",
+        "name": "cert-manager"
+      },
+      {
+        "class": "open",
+        "name": "Helm"
+      },
+      {
+        "class": "open",
+        "name": "Helmfile"
+      },
+      {
+        "class": "open",
+        "name": "helm-diff"
+      },
+      {
+        "class": "open",
+        "name": "Keycloak"
+      },
+      {
+        "class": "open",
+        "name": "keycloak-config-cli"
+      },
+      {
+        "class": "open",
+        "name": "Bureaublad"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud Server"
+      },
+      {
+        "class": "open",
+        "name": "Collabora Online (CODE)"
+      },
+      {
+        "class": "open",
+        "name": "Element Web"
+      },
+      {
+        "class": "open",
+        "name": "Synapse"
+      },
+      {
+        "class": "open",
+        "name": "PostgreSQL"
+      },
+      {
+        "class": "open",
+        "name": "Redis"
+      },
+      {
+        "class": "open",
+        "name": "MinIO"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: OpenID Connect user backend (user_oidc)"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: Nextcloud Office (richdocuments)"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: draw.io"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: Deck"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: Team folders (groupfolders)"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: Contacts"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: File access control (files_accesscontrol)"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud app: Thematiq"
+      }
+    ],
+    "closed": [],
+    "counts": {
+      "AGPL-3.0-only": 2,
+      "AGPL-3.0-only OR SSPL-1.0 OR LicenseRef-RSALv2": 1,
+      "AGPL-3.0-or-later": 7,
+      "AGPL-3.0-or-later OR GPL-3.0-or-later OR LicenseRef-Element-Commercial": 1,
+      "AGPL-3.0-or-later OR LicenseRef-Element-Commercial": 1,
+      "Apache-2.0": 6,
+      "EUPL-1.2": 3,
+      "LicenseRef-Ubuntu-main": 1,
+      "MIT": 2,
+      "MPL-2.0": 1,
+      "PostgreSQL": 1
+    },
+    "level": "green",
+    "open": 26,
+    "reason": "Alles is open source: je kunt het zelf blijven draaien en verder ontwikkelen, ook zonder de leverancier.",
+    "restricted": [],
+    "total": 26,
+    "unknown": []
+  },
+  "components": [
+    {
+      "evidence": "LICENSE (EUPL v1.2) and publiccode.yml at b2ae545 (GitHub mirror MinBZK/mijn-bureau-infra)",
+      "license": "EUPL-1.2",
+      "name": "Mijn Bureau (mijn-bureau-infra)",
+      "repo": "https://code.overheid.nl/MinBZK/mijn-bureau-infra"
+    },
+    {
+      "evidence": "a distribution: every package has its own licence (/usr/share/doc/*/copyright); Ubuntu's licence policy requires application software in main to be free software with full source code that may be modified and redistributed (exceptions: some firmware and fonts); the cloud image is built from main. Canonical's IP policy only limits the Ubuntu trademarks on modified copies (canonical.com/legal/intellectual-property-policy)",
+      "license": "LicenseRef-Ubuntu-main",
+      "name": "Ubuntu 24.04 LTS (guest VM)",
+      "repo": "https://cloud-images.ubuntu.com/releases/noble/release-20260911/"
+    },
+    {
+      "evidence": "LICENSE at tag v1.36.4+k3s1",
+      "license": "Apache-2.0",
+      "name": "K3s",
+      "repo": "https://github.com/k3s-io/k3s"
+    },
+    {
+      "evidence": "LICENSE.md (default branch; version is whatever K3s v1.36.4+k3s1 bundles)",
+      "license": "MIT",
+      "name": "Traefik (bundled with K3s)",
+      "repo": "https://github.com/traefik/traefik"
+    },
+    {
+      "evidence": "LICENSE at tag v1.16.2",
+      "license": "Apache-2.0",
+      "name": "cert-manager",
+      "repo": "https://github.com/cert-manager/cert-manager"
+    },
+    {
+      "evidence": "LICENSE (default branch)",
+      "license": "Apache-2.0",
+      "name": "Helm",
+      "repo": "https://github.com/helm/helm"
+    },
+    {
+      "evidence": "LICENSE (default branch); v1.1.7 pinned",
+      "license": "MIT",
+      "name": "Helmfile",
+      "repo": "https://github.com/helmfile/helmfile"
+    },
+    {
+      "evidence": "LICENSE (default branch)",
+      "license": "Apache-2.0",
+      "name": "helm-diff",
+      "repo": "https://github.com/databus23/helm-diff"
+    },
+    {
+      "evidence": "LICENSE.txt at tag 26.3.3 (image bitnamilegacy/keycloak:26.3.3)",
+      "license": "Apache-2.0",
+      "name": "Keycloak",
+      "repo": "https://github.com/keycloak/keycloak"
+    },
+    {
+      "evidence": "LICENSE.txt (default branch); keycloakConfigCli.enabled: true in upstream keycloak values, image 6.4.0",
+      "license": "Apache-2.0",
+      "name": "keycloak-config-cli",
+      "repo": "https://github.com/adorsys/keycloak-config-cli"
+    },
+    {
+      "evidence": "LICENSE at tag v0.9.3 (api; frontend v0.6.1 from the same repo)",
+      "license": "EUPL-1.2",
+      "name": "Bureaublad",
+      "repo": "https://github.com/MinBZK/bureaublad"
+    },
+    {
+      "evidence": "COPYING (AGPLv3) at tag v34.0.1; file headers mix AGPL-3.0-only and AGPL-3.0-or-later",
+      "license": "AGPL-3.0-only",
+      "name": "Nextcloud Server",
+      "repo": "https://github.com/nextcloud/server"
+    },
+    {
+      "evidence": "COPYING (default branch; no public tag for 26.04.2.2.1)",
+      "license": "MPL-2.0",
+      "name": "Collabora Online (CODE)",
+      "repo": "https://github.com/CollaboraOnline/online"
+    },
+    {
+      "evidence": "README 'Copyright & License' + LICENSE-AGPL-3.0/LICENSE-GPL-3.0/LICENSE-COMMERCIAL at tag v1.12.23",
+      "license": "AGPL-3.0-or-later OR GPL-3.0-or-later OR LicenseRef-Element-Commercial",
+      "name": "Element Web",
+      "repo": "https://github.com/element-hq/element-web"
+    },
+    {
+      "evidence": "pyproject.toml license field + LICENSE-AGPL-3.0 at tag v1.156.0",
+      "license": "AGPL-3.0-or-later OR LicenseRef-Element-Commercial",
+      "name": "Synapse",
+      "repo": "https://github.com/element-hq/synapse"
+    },
+    {
+      "evidence": "COPYRIGHT (PostgreSQL Licence) at tag REL_17_6 (image bitnamilegacy/postgresql:17.6.0)",
+      "license": "PostgreSQL",
+      "name": "PostgreSQL",
+      "repo": "https://github.com/postgres/postgres"
+    },
+    {
+      "evidence": "LICENSE.txt at tag 8.2.1 (tri-licence since Redis 8; image bitnamilegacy/redis:8.2.1)",
+      "license": "AGPL-3.0-only OR SSPL-1.0 OR LicenseRef-RSALv2",
+      "name": "Redis",
+      "repo": "https://github.com/redis/redis"
+    },
+    {
+      "evidence": "LICENSE + source headers at tag RELEASE.2025-07-23T15-54-02Z (image bitnamilegacy/minio:2025.7.23)",
+      "license": "AGPL-3.0-or-later",
+      "name": "MinIO",
+      "repo": "https://github.com/minio/minio"
+    },
+    {
+      "evidence": "COPYING + appinfo/info.xml SPDX header at tag v8.11.0",
+      "license": "AGPL-3.0-or-later",
+      "name": "Nextcloud app: OpenID Connect user backend (user_oidc)",
+      "repo": "https://github.com/nextcloud/user_oidc"
+    },
+    {
+      "evidence": "appinfo/info.xml (<licence>agpl, SPDX header) at tag v11.1.2",
+      "license": "AGPL-3.0-or-later",
+      "name": "Nextcloud app: Nextcloud Office (richdocuments)",
+      "repo": "https://github.com/nextcloud/richdocuments"
+    },
+    {
+      "evidence": "LICENSE (AGPLv3 text, no or-later statement) at tag v4.3.9; info.xml says agpl",
+      "license": "AGPL-3.0-only",
+      "name": "Nextcloud app: draw.io",
+      "repo": "https://github.com/arnowelzel/drawio-nextcloud"
+    },
+    {
+      "evidence": "LICENSE + appinfo/info.xml SPDX header at tag v1.18.5",
+      "license": "AGPL-3.0-or-later",
+      "name": "Nextcloud app: Deck",
+      "repo": "https://github.com/nextcloud/deck"
+    },
+    {
+      "evidence": "appinfo/info.xml <licence>AGPL-3.0-or-later at tag v22.0.6",
+      "license": "AGPL-3.0-or-later",
+      "name": "Nextcloud app: Team folders (groupfolders)",
+      "repo": "https://github.com/nextcloud/groupfolders"
+    },
+    {
+      "evidence": "COPYING + appinfo/info.xml SPDX header at tag v8.9.1",
+      "license": "AGPL-3.0-or-later",
+      "name": "Nextcloud app: Contacts",
+      "repo": "https://github.com/nextcloud/contacts"
+    },
+    {
+      "evidence": "appinfo/info.xml (<licence>agpl, SPDX header) at tag v5.0.0",
+      "license": "AGPL-3.0-or-later",
+      "name": "Nextcloud app: File access control (files_accesscontrol)",
+      "repo": "https://github.com/nextcloud/files_accesscontrol"
+    },
+    {
+      "evidence": "LICENSE at tag v1.2.10",
+      "license": "EUPL-1.2",
+      "name": "Nextcloud app: Thematiq",
+      "repo": "https://github.com/ConductionNL/thematiq"
+    }
+  ],
+  "health": {
+    "url": "https://bureaublad.dawo.internal"
+  },
+  "needs": {
+    "memory_gib": 16,
+    "platform": "dawo-usb"
+  },
+  "source": {
+    "url": "https://code.overheid.nl/MinBZK/mijn-bureau-infra",
+    "rev": "b2ae545013c153b9a3fb0aebcb51d22f348e1573"
+  }
+}

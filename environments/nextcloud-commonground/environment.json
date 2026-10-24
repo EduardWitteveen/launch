@@ -1,0 +1,207 @@
+{
+  "title": "Nextcloud Common Ground",
+  "version": "Nextcloud 34.0.5 met Dossiq 0.4.0 (demo)",
+  "summary": "Common Ground in een doos: Nextcloud met de apps van Conduction voor registers, zaakgericht werken, klantcontact en een publieksportaal, gevuld met demozaken.",
+  "url": "http://localhost:8609/apps/dossiq/",
+  "login": "launcher / launcher (of admin / admin)",
+  "license": "EUPL-1.2",
+  "standards": [
+    "Common Ground",
+    "Zaakgericht werken",
+    "NL Design System"
+  ],
+  "licences": {
+    "classes": [
+      {
+        "class": "open",
+        "name": "Dossiq (app and dossiq-compose.yaml)"
+      },
+      {
+        "class": "open",
+        "name": "Nextcloud Server"
+      },
+      {
+        "class": "open",
+        "name": "PostgreSQL"
+      },
+      {
+        "class": "open",
+        "name": "Alpine Linux (app-installer container)"
+      },
+      {
+        "class": "open",
+        "name": "OpenRegister"
+      },
+      {
+        "class": "open",
+        "name": "Thematiq"
+      },
+      {
+        "class": "open",
+        "name": "Integriq"
+      },
+      {
+        "class": "open",
+        "name": "OpenCatalogi"
+      },
+      {
+        "class": "open",
+        "name": "Pipelinq"
+      },
+      {
+        "class": "open",
+        "name": "Portaliq"
+      },
+      {
+        "class": "open",
+        "name": "Docker Engine (dockerd)"
+      },
+      {
+        "class": "open",
+        "name": "Docker CLI"
+      },
+      {
+        "class": "open",
+        "name": "containerd"
+      },
+      {
+        "class": "open",
+        "name": "runc"
+      },
+      {
+        "class": "open",
+        "name": "Docker Compose"
+      },
+      {
+        "class": "open",
+        "name": "Ubuntu 24.04 LTS (guest VM)"
+      }
+    ],
+    "closed": [],
+    "counts": {
+      "AGPL-3.0-only": 1,
+      "Apache-2.0": 5,
+      "EUPL-1.2": 7,
+      "LicenseRef-Alpine-main": 1,
+      "LicenseRef-Ubuntu-main": 1,
+      "PostgreSQL": 1
+    },
+    "level": "green",
+    "open": 16,
+    "reason": "Alles is open source: je kunt het zelf blijven draaien en verder ontwikkelen, ook zonder de leverancier.",
+    "restricted": [],
+    "total": 16,
+    "unknown": []
+  },
+  "components": [
+    {
+      "evidence": "LICENSE (EUPL v1.2) at c2d5e17 (compose) and at tag v0.4.0 (app)",
+      "license": "EUPL-1.2",
+      "name": "Dossiq (app and dossiq-compose.yaml)",
+      "repo": "https://github.com/ConductionNL/dossiq"
+    },
+    {
+      "evidence": "COPYING (AGPLv3) at tag v34.0.5; file headers mix AGPL-3.0-only and AGPL-3.0-or-later",
+      "license": "AGPL-3.0-only",
+      "name": "Nextcloud Server",
+      "repo": "https://github.com/nextcloud/server"
+    },
+    {
+      "evidence": "COPYRIGHT (PostgreSQL Licence); image postgres:16.15-alpine",
+      "license": "PostgreSQL",
+      "name": "PostgreSQL",
+      "repo": "https://github.com/postgres/postgres"
+    },
+    {
+      "evidence": "a distribution: every package in aports main carries its own licence in its APKBUILD (license=), all open-source licences; Alpine's own tooling is GPL-2.0 / MIT (known)",
+      "license": "LicenseRef-Alpine-main",
+      "name": "Alpine Linux (app-installer container)",
+      "repo": "https://gitlab.alpinelinux.org/alpine/aports"
+    },
+    {
+      "evidence": "LICENSE at tag v2.1.0",
+      "license": "EUPL-1.2",
+      "name": "OpenRegister",
+      "repo": "https://github.com/ConductionNL/openregister"
+    },
+    {
+      "evidence": "LICENSE at tag v1.2.10",
+      "license": "EUPL-1.2",
+      "name": "Thematiq",
+      "repo": "https://github.com/ConductionNL/thematiq"
+    },
+    {
+      "evidence": "LICENSE at tag v0.4.4",
+      "license": "EUPL-1.2",
+      "name": "Integriq",
+      "repo": "https://github.com/ConductionNL/integriq"
+    },
+    {
+      "evidence": "LICENSE at tag v2.1.0",
+      "license": "EUPL-1.2",
+      "name": "OpenCatalogi",
+      "repo": "https://github.com/ConductionNL/opencatalogi"
+    },
+    {
+      "evidence": "LICENSE at tag v0.5.14",
+      "license": "EUPL-1.2",
+      "name": "Pipelinq",
+      "repo": "https://github.com/ConductionNL/pipelinq"
+    },
+    {
+      "evidence": "LICENSE at tag v0.2.8",
+      "license": "EUPL-1.2",
+      "name": "Portaliq",
+      "repo": "https://github.com/ConductionNL/portaliq"
+    },
+    {
+      "evidence": "LICENSE (default branch); static bundle docker-29.9.1.tgz, manifest valtimo.tooling",
+      "license": "Apache-2.0",
+      "name": "Docker Engine (dockerd)",
+      "repo": "https://github.com/moby/moby"
+    },
+    {
+      "evidence": "LICENSE (default branch); in docker-29.9.1.tgz",
+      "license": "Apache-2.0",
+      "name": "Docker CLI",
+      "repo": "https://github.com/docker/cli"
+    },
+    {
+      "evidence": "LICENSE (default branch); in docker-29.9.1.tgz",
+      "license": "Apache-2.0",
+      "name": "containerd",
+      "repo": "https://github.com/containerd/containerd"
+    },
+    {
+      "evidence": "LICENSE (default branch); in docker-29.9.1.tgz",
+      "license": "Apache-2.0",
+      "name": "runc",
+      "repo": "https://github.com/opencontainers/runc"
+    },
+    {
+      "evidence": "LICENSE (default branch); v5.6.0, manifest valtimo.tooling",
+      "license": "Apache-2.0",
+      "name": "Docker Compose",
+      "repo": "https://github.com/docker/compose"
+    },
+    {
+      "evidence": "a distribution: every package has its own licence (/usr/share/doc/*/copyright); Ubuntu's licence policy requires application software in main to be free software with full source code that may be modified and redistributed (exceptions: some firmware and fonts); the cloud image is built from main. Canonical's IP policy only limits the Ubuntu trademarks on modified copies (canonical.com/legal/intellectual-property-policy)",
+      "license": "LicenseRef-Ubuntu-main",
+      "name": "Ubuntu 24.04 LTS (guest VM)",
+      "repo": "https://cloud-images.ubuntu.com/releases/noble/release-20260911/"
+    }
+  ],
+  "health": {
+    "url": "http://localhost:8609/status.php"
+  },
+  "needs": {
+    "memory_gib": 8
+  },
+  "source": {
+    "url": "https://github.com/ConductionNL/dossiq",
+    "rev": "c2d5e17b46d7acae0506bea1c7ab4fb5a010bc45",
+    "raw_url": "https://raw.githubusercontent.com/ConductionNL/dossiq/c2d5e17b46d7acae0506bea1c7ab4fb5a010bc45/dossiq-compose.yaml",
+    "sha256": "4954bdfd21874c32db8c49b58df77a6a15e8dbf99dd1cd417982e0db83e6559f",
+    "path": "dossiq-compose.yaml"
+  }
+}

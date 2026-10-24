@@ -1,0 +1,189 @@
+# Our changes to upstream's gzac-docker-compose (v/13; profiles demo, zgw and
+# openformulieren), kept
+# apart from its files (#246). Applied as a second -f file. Each change and why:
+#
+#   image: ...@sha256:...   pinned by digest (AGENTS rule 4); the tags are
+#                           upstream's own, the digests are in the manifest
+#   mem_limit, JAVA_*       the guest has 16 GiB; without a limit each JVM
+#                           sizes itself from the whole guest
+#   extra_hosts             upstream reaches the database and Keycloak through
+#                           host.docker.internal; on Linux Docker Engine that
+#                           name needs host-gateway (Docker Desktop has it)
+#
+# Nothing else differs from upstream: realm, users, ports, the demo case and
+# the ZGW and Open Formulieren fixtures are upstream's. (The driver adds the
+# login launcher / launcher and Open Formulieren's address to the realm's console
+# client after start: apps/valtimo/deploy.sh add_dawo_login.)
+
+services:
+  gzac-keycloak:
+    image: quay.io/keycloak/keycloak:26.2.2@sha256:df40860c716d0c2f941967e8ac3ca5e74094c09988298b2eb0ae9335ed34f8f6
+    mem_limit: 1g
+    environment:
+      JAVA_OPTS_KC_HEAP: "-XX:MaxRAMPercentage=70"
+
+  gzac-keycloak-database:
+    image: docker.io/library/postgres:17.4@sha256:304ab813518754228f9f792f79d6da36359b82d8ecf418096c636725f8c930ad
+    mem_limit: 512m
+
+  gzac-database:
+    image: docker.io/library/postgres:17.4@sha256:304ab813518754228f9f792f79d6da36359b82d8ecf418096c636725f8c930ad
+    mem_limit: 512m
+
+  gzac-rabbitmq:
+    image: docker.io/library/rabbitmq:4.1-management@sha256:b99311e4919b76a723111339950d9a15dc1e9daff2c0320b18b6c18f961a7ee3
+    mem_limit: 512m
+
+  gzac-demo-backend:
+    image: docker.io/ritense/gzac-evenementenvergunning-demo-backend:13.4.1@sha256:595cf859ef31dc07e8828b1a20308c8d7756922edeedd0aa6d6aaf5e9967a7bd
+    mem_limit: 3g
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  gzac-demo-frontend:
+    image: docker.io/ritense/gzac-evenementenvergunning-demo-frontend:13.4.1@sha256:2725cc40ae5ac143edef212a7bce72db87e61c2f846b4e645f1f0abde4bf29c9
+    mem_limit: 256m
+
+  # The ZGW services and Open Formulieren (#260): upstream's profiles zgw and
+  # openformulieren, as its README combines them with demo. Pinned, with a
+  # memory limit; the web services run 2 uWSGI processes instead of 4 and
+  # Open Notificaties' worker 1 task at a time instead of 4 (memory); the
+  # health checks others wait for allow 10 minutes for the first migrations
+  # (upstream: 30 s start, then 3 tries of 30 s); and the services that call
+  # each other through host.docker.internal get host-gateway (see above).
+
+  openzaak:
+    image: docker.io/openzaak/open-zaak:1.25.0@sha256:79a78bc78419670c8695ac5ba16b0af5e7a6a67d3ecbfe5b9095ded2aba177eb
+    mem_limit: 1g
+    environment:
+      - UWSGI_PROCESSES=2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  openzaak-database:
+    image: docker.io/postgis/postgis:17-3.4@sha256:d0b5a6ecab18997637f55a83cb4a9467391de5645916cfa1b6f2a8d19eee7be5
+    mem_limit: 512m
+
+  openzaak-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+    mem_limit: 128m
+
+  objecten-api:
+    image: docker.io/maykinmedia/objects-api:3.3.0@sha256:882f384035ba00de7c9f405c692497182b8a49491638a9e935cf609746fd067b
+    mem_limit: 1g
+    environment:
+      - UWSGI_PROCESSES=2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      start_period: 600s
+
+  objecten-api-database:
+    image: docker.io/postgis/postgis:17-3.4@sha256:d0b5a6ecab18997637f55a83cb4a9467391de5645916cfa1b6f2a8d19eee7be5
+    mem_limit: 512m
+
+  objecten-api-import:
+    image: docker.io/maykinmedia/objects-api:3.3.0@sha256:882f384035ba00de7c9f405c692497182b8a49491638a9e935cf609746fd067b
+    mem_limit: 768m
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  objecten-api-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+    mem_limit: 128m
+
+  objecten-api-celery:
+    image: docker.io/maykinmedia/objects-api:3.3.0@sha256:882f384035ba00de7c9f405c692497182b8a49491638a9e935cf609746fd067b
+    mem_limit: 768m
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      start_period: 600s
+
+  objecttypen-api:
+    image: docker.io/maykinmedia/objecttypes-api:3.3.0@sha256:6d12d8e2ad1bf6408df0e23027f9b8f338b09cc074516adde9fd3d857a644654
+    mem_limit: 1g
+    environment:
+      - UWSGI_PROCESSES=2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      start_period: 600s
+
+  objecttypen-api-database:
+    image: docker.io/library/postgres:17.4@sha256:304ab813518754228f9f792f79d6da36359b82d8ecf418096c636725f8c930ad
+    mem_limit: 512m
+
+  objecttypen-api-import:
+    image: docker.io/maykinmedia/objecttypes-api:3.3.0@sha256:6d12d8e2ad1bf6408df0e23027f9b8f338b09cc074516adde9fd3d857a644654
+    mem_limit: 768m
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  open-notificaties-rabbitmq:
+    image: docker.io/library/rabbitmq:4.1.0-management@sha256:935b3f84c1e4a4ce45d211627f00030fa6721350efb52e0a6ed6924adedc68b7
+    mem_limit: 512m
+
+  open-notificaties-celery:
+    image: docker.io/openzaak/open-notificaties:1.13.0@sha256:7a7ea7fe45063618e9d5e12a6403dd0128504f9f9f8d4632e66e218ead7efee5
+    mem_limit: 768m
+    environment:
+      - CELERY_WORKER_CONCURRENCY=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  open-notificaties:
+    image: docker.io/openzaak/open-notificaties:1.13.0@sha256:7a7ea7fe45063618e9d5e12a6403dd0128504f9f9f8d4632e66e218ead7efee5
+    mem_limit: 1g
+    environment:
+      - UWSGI_PROCESSES=2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  open-notificaties-database:
+    image: docker.io/library/postgres:17.4@sha256:304ab813518754228f9f792f79d6da36359b82d8ecf418096c636725f8c930ad
+    mem_limit: 512m
+
+  open-notificaties-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+    mem_limit: 128m
+
+  open-forms-database:
+    image: docker.io/library/postgres:17.4@sha256:304ab813518754228f9f792f79d6da36359b82d8ecf418096c636725f8c930ad
+    mem_limit: 512m
+
+  open-forms-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+    mem_limit: 128m
+
+  open-forms-web:
+    image: docker.io/openformulieren/open-forms:3.1.9@sha256:045a0d5b7fd772a9934a096ccdbfcd83d2ae503fc4931cacadc68eaf3c81c974
+    mem_limit: 1536m
+    environment:
+      - UWSGI_PROCESSES=2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  open-forms-celery:
+    image: docker.io/openformulieren/open-forms:3.1.9@sha256:045a0d5b7fd772a9934a096ccdbfcd83d2ae503fc4931cacadc68eaf3c81c974
+    mem_limit: 1g
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      start_period: 600s
+
+  open-forms-celery-beat:
+    image: docker.io/openformulieren/open-forms:3.1.9@sha256:045a0d5b7fd772a9934a096ccdbfcd83d2ae503fc4931cacadc68eaf3c81c974
+    mem_limit: 384m
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  open-forms-celery-flower:
+    image: docker.io/openformulieren/open-forms:3.1.9@sha256:045a0d5b7fd772a9934a096ccdbfcd83d2ae503fc4931cacadc68eaf3c81c974
+    mem_limit: 384m
+
+  open-forms-busybox:
+    image: docker.io/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+    mem_limit: 32m

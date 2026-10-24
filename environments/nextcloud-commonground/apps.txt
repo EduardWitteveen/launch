@@ -1,0 +1,7 @@
+openregister 2.1.0 https://github.com/ConductionNL/openregister/releases/download/v2.1.0/openregister-2.1.0.tar.gz c55f8e34e08b62da94f0f980b0f837be48eaf5b001b90b27278fd8194875101b
+thematiq 1.2.10 https://github.com/ConductionNL/thematiq/releases/download/v1.2.10/thematiq-1.2.10.tar.gz 0745f26b79b822abb57744962cb8194d9449fcf44001f8da1ed13268c0d3289f
+integriq 0.4.4 https://github.com/ConductionNL/integriq/releases/download/v0.4.4/integriq-0.4.4.tar.gz dfd3004716c0de8c521348964b8c59e50ca550b5235e5040880e445af50a5672
+dossiq 0.4.0 https://github.com/ConductionNL/dossiq/releases/download/v0.4.0/dossiq-0.4.0.tar.gz db5882979201e31a971acfcc6dff6a64bb458d83f32f64bd64e6c9934086094e
+opencatalogi 2.1.0 https://github.com/ConductionNL/opencatalogi/releases/download/v2.1.0/opencatalogi-2.1.0.tar.gz af624d8d0b8d3392640aba25e3c1aefa296c835c201bf5093581530b69e27346
+pipelinq 0.5.14 https://github.com/ConductionNL/pipelinq/releases/download/v0.5.14/pipelinq-0.5.14.tar.gz aa00f5217a0e329c0e345023628564274ef2bda0857b04c5461dcc0af3dd8296
+portaliq 0.2.8 https://github.com/ConductionNL/portaliq/releases/download/v0.2.8/portaliq-0.2.8.tar.gz 99e83a80747fd66fe459b010277203664baebed7353e747f7dcfe89f2d8a06e8

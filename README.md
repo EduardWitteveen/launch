@@ -4,10 +4,13 @@ Met de **Launcher** start, stop en open je omgevingen op je eigen computer, éé
 
 | Omgeving | Wat het is | Eerste start |
 |---|---|---|
+| **Mijn Bureau** | Bestanden, samen documenten bewerken en chat, met één inlog. **Werkt nog alleen vanaf de DAWO-USB-SSD**: het draait op Kubernetes. De kaart staat er wel, met die melding. | – |
 | **Tezza** | Het zaak- en documentbeheer van Contezza, compleet zoals Contezza het levert (tezza-packaging 4.15.2: Alfresco, GZAC, Open Zaak, Notificaties, Objecten), met de zaaktypes van Súdwest-Fryslân. | ongeveer 45 minuten (ongeveer 8 GB downloaden), daarna een paar minuten |
+| **Nextcloud Common Ground** | De apps van Conduction (Dossiq, Pipelinq, Portaliq, OpenRegister) in Nextcloud, met demozaken. **Nog in test op Windows.** | ongeveer 20 minuten |
+| **Valtimo** | Zaakgericht werken (GZAC): een aanvraag evenementenvergunning behandelen, met Open Zaak, Objecten en een burgerformulier (Open Formulieren). **Nog in test op Windows.** | ongeveer 30 minuten |
 | **Haal Centraal** | Persoonsgegevens opvragen bij de BRP-testversie van de RvIG, met fictieve testpersonen. Klein en snel: handig om de Launcher te leren kennen. | een minuut |
 
-Launch is een **experimenteel en onofficieel** project. Het is geen product van Contezza, de RvIG of een gemeente. Het komt voort uit [dawo-appliance](https://github.com/EduardWitteveen/dawo-appliance) en werkt ook los daarvan.
+Launch is een **experimenteel en onofficieel** project. Het is geen product van Contezza, Conduction, Ritense, de RvIG, Mijn Bureau of een gemeente. Het komt voort uit [dawo-appliance](https://github.com/EduardWitteveen/dawo-appliance) en werkt ook los daarvan.
 
 ## Installeren (Windows 10/11)
 
