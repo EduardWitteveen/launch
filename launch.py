@@ -282,6 +282,11 @@ def cmd_stop(eid, quiet=False):
     for k in ("pid", "failed", "progress"):
         if os.path.exists(p[k]):
             os.remove(p[k])
+    # A stop that left it running must say so: the Launcher shows the error
+    # instead of waiting for a stop that never comes.
+    if answers((env.get("health") or {}).get("url") or env["url"]):
+        print(f"De {env['title']}-omgeving draait nog: stoppen lukte niet. De details staan in {eid}.log.")
+        return 1
     if not quiet:
         print(f"De {env['title']}-omgeving is gestopt.")
     return 0

@@ -36,7 +36,13 @@ cp -f "${here}/swf/publish.py" "${TZ_STATE_DIR}/swf-publish.py"
 deploy=(bash "${here}/deploy.sh")
 
 if [[ "${1:-}" == stop ]]; then
-  "${deploy[@]}" --stop
+  # Not deploy.sh --stop: that stops the appliance's Docker unit (systemctl),
+  # which a laptop does not have. Stop Tezza's containers; their data stays.
+  echo "==> stop the Tezza containers"
+  ids="$(docker ps -q --filter label=com.docker.compose.project=tezza-packaging)"
+  # shellcheck disable=SC2086 # one container id per word
+  [[ -z "${ids}" ]] || docker stop -t 30 ${ids} >/dev/null
+  echo "    stopped"
   exit 0
 fi
 [[ "${1:-}" == start && -n "${2:-}" ]] || { echo "usage: run.sh start <progress-file> | stop" >&2; exit 2; }
