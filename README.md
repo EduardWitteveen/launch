@@ -11,7 +11,7 @@ Launch is een **experimenteel en onofficieel** project. Het is geen product van 
 
 ## Installeren (Windows 10/11)
 
-1. Download **[Launch-installeren.cmd](https://github.com/EduardWitteveen/launch/releases/download/v0.1.0-rc.2/Launch-installeren.cmd)**.
+1. Download **[Launch-installeren.cmd](https://github.com/EduardWitteveen/launch/releases/download/v0.1.0-rc.3/Launch-installeren.cmd)**.
 2. Dubbelklik erop. Windows waarschuwt misschien ("Windows heeft uw pc beveiligd"). Kies dan *Meer informatie* → *Toch uitvoeren*.
 3. Het bestand zet alles neer wat nodig is en slaat over wat er al is:
    - **Git for Windows** en **Python 3**;
