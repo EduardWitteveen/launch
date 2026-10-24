@@ -11,6 +11,7 @@ The Launcher (launcher/launcher.py) runs this command for its buttons.
   python launch.py --stop <id>           stop one
   python launch.py --status [--json]     which environments run, and where
   python launch.py --list [--json]       the catalogue (--json: for the Launcher)
+  python launch.py --fix <id>            fix the known problems (starting does too)
   python launch.py --check <id> [--json] only check whether this machine can
 
 Works on Windows (Docker Desktop and Git for Windows' bash) and on Linux or
@@ -242,20 +243,104 @@ def check(env):
         if mem + 0.5 < need:
             problems.append(f"Docker heeft {mem:.0f} GB geheugen; {env['title']} heeft er ongeveer {need} nodig "
                             "(zie de README: het geheugen van Docker vergroten).")
-    for host in (env.get("needs") or {}).get("host_names", []):
+    return problems + [c["problem"] for c in failing_checks(env)]
+
+
+# --- known problems and their fixes ---------------------------------------------
+#
+# An environment lists its known problems in environment.json, each with how to
+# see it, what to tell, and (optionally) the fix that solves it:
+#
+#   "checks": [{
+#     "id": "identity",
+#     "when": {"host_unknown": "identity"}            this name does not resolve
+#           | {"command": ["check.sh", "arg"]},       or: this exits non-zero
+#     "problem": "what is wrong, for the person",
+#     "fix": {
+#       "text": "what the fix changes on this computer (shown before it runs)",
+#       "run": ["../../tools/hostnamen.ps1", "identity"],
+#       "os": ["windows"]                              optional: where it works
+#     }
+#   }]
+#
+# Paths in "command" and "run" are relative to the environment's directory;
+# .ps1 runs with PowerShell, .sh with bash, anything else as a program. A start
+# runs the fixes first (the Launcher says what they change and asks); `launch
+# --fix <id>` runs them alone. Whether a fix worked is the check, run again.
+
+def this_os():
+    return "windows" if WINDOWS else "macos" if sys.platform == "darwin" else "linux"
+
+
+def script(env, cmd):
+    """The command line for cmd (a list, its first item a path in the environment)."""
+    path = os.path.normpath(os.path.join(ENVS, env["id"], cmd[0]))
+    if path.endswith(".ps1"):
+        return ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path, *cmd[1:]]
+    if path.endswith(".sh"):
+        return [bash(), path, *cmd[1:]]
+    return [path, *cmd[1:]]
+
+
+def fails(env, c):
+    """Whether check c finds its problem on this machine."""
+    when = c.get("when") or {}
+    if "host_unknown" in when:
+        import socket
         try:
-            import socket
-            socket.gethostbyname(host)
+            socket.gethostbyname(when["host_unknown"])
+            return False
         except OSError:
-            problems.append(f"De naam '{host}' is op deze computer onbekend. Voer eenmalig tools\\hostnamen.cmd uit "
-                            "(als beheerder); zonder die naam kun je niet inloggen.")
-    return problems
+            return True
+    if "command" in when:
+        try:
+            return subprocess.run(script(env, when["command"]), capture_output=True, creationflags=NO_WINDOW,
+                                  timeout=60, stdin=subprocess.DEVNULL).returncode != 0
+        except (OSError, subprocess.TimeoutExpired):
+            return True
+    return False
+
+
+def failing_checks(env):
+    return [c for c in env.get("checks", []) if isinstance(c, dict) and fails(env, c)]
+
+
+def has_fix(c):
+    f = c.get("fix") or {}
+    return bool(f.get("run")) and this_os() in f.get("os", [this_os()])
+
+
+def fixes_of(env):
+    """The failing checks that have a fix here: [{id, problem, text}]."""
+    return [{"id": c.get("id", ""), "problem": c["problem"], "text": c["fix"].get("text", c["problem"])}
+            for c in failing_checks(env) if has_fix(c)]
+
+
+def fix(env):
+    """Run the fixes of the failing checks; return the ids that still fail."""
+    failed = []
+    for c in failing_checks(env):
+        if not has_fix(c):
+            continue
+        try:
+            # A fix may ask Windows for administrator rights; it waits for the answer.
+            subprocess.run(script(env, c["fix"]["run"]), capture_output=True, creationflags=NO_WINDOW,
+                           timeout=300, stdin=subprocess.DEVNULL)
+        except (OSError, subprocess.TimeoutExpired):
+            pass  # nobody answered; the check below says so
+        if fails(env, c):
+            failed.append(c.get("id", ""))
+    return failed
 
 
 # --- commands ------------------------------------------------------------------
 
 def cmd_start(eid, yes):
     env = env_of(eid)
+    fixes = fixes_of(env)
+    if fixes:
+        print("Eerst lost Launch dit op:\n- " + "\n- ".join(f["text"] for f in fixes))
+        fix(env)
     problems = check(env)
     if problems:
         print("Let op:\n- " + "\n- ".join(problems))
@@ -321,10 +406,19 @@ def main(argv):
                 print(f"{e['title']}: {words[s['state']]}" + (f" {e['url']}" if s["state"] == "ready" else ""))
         return 0
     if argv[0] == "--check":
-        problems = check(env_of(argv[1]))
-        print(json.dumps({"ok": not problems, "problems": problems}, ensure_ascii=False) if as_json
-              else ("Alles in orde." if not problems else "\n".join(problems)))
+        env = env_of(argv[1])
+        problems = check(env)
+        fixes = fixes_of(env)
+        # blocking: what no fix solves (the Launcher asks before it starts anyway).
+        fixed = [f["problem"] for f in fixes]
+        print(json.dumps({"ok": not problems, "problems": problems, "fixes": fixes,
+                          "blocking": [p for p in problems if p not in fixed]}, ensure_ascii=False)
+              if as_json else ("Alles in orde." if not problems else "\n".join(problems)))
         return 0 if not problems else 1
+    if argv[0] == "--fix":
+        failed = fix(env_of(argv[1]))
+        print("Opgelost." if not failed else "Niet gelukt (geen toestemming gegeven?). Probeer het opnieuw.")
+        return 0 if not failed else 1
     if argv[0] == "--stop":
         return cmd_stop(argv[1])
     if argv[0] == "--supervise":

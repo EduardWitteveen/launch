@@ -37,7 +37,6 @@ Is er net Git, Python of Rancher Desktop bijgekomen en doet de Launcher niets? H
 - **Rondgang**: de Launcher start alle omgevingen om de beurt, laat ze een tijdje aan staan en gaat door naar de volgende. Zo zie je zonder op te letten of alles nog werkt. Je zet hem uit met *Rondgang stoppen*.
 
 **Tezza:** log in met `launcher` / `launcher`. Dat is een demo-gebruiker met dezelfde groepen als de beheerder.
-
 ## Wat je computer nodig heeft
 
 - Windows 10 of 11, 64-bit, met beheerdersrechten voor de installatie.
@@ -50,14 +49,15 @@ Is er net Git, Python of Rancher Desktop bijgekomen en doet de Launcher niets? H
 
 - De kaart zegt **Starten mislukt**: klik op **Opnieuw proberen**. De details staan in `%LOCALAPPDATA%\launch\<omgeving>.log`.
 - **Docker draait niet**: start Docker Desktop of Rancher Desktop en wacht tot het klaar is.
-- **Inloggen bij Tezza lukt niet** ("identity" onbekend): dubbelklik op `tools\hostnamen.cmd` in `%LOCALAPPDATA%\Programs\Launch`.
+- **"identity" onbekend** (Tezza): dat lost de Launcher zelf op. **Starten** (of **Nu oplossen** op de kaart) voegt de naam toe; Windows vraagt één keer om toestemming. Met de hand kan het ook: `tools\hostnamen.cmd` in `%LOCALAPPDATA%\Programs\Launch`.
 - **Opnieuw installeren**: voer `Launch-installeren.cmd` nog eens uit. Wat al gedownload is (Docker-images, de gegevens van Tezza) blijft bewaard.
 
 ## For developers
 
 - `launch.py` is the command line (`python launch.py --list | --status | <id> | --stop <id> | --check <id>`), with the same JSON contract as DAWO's `launch` (`--list --json` gives `{"schema": 1, "environments": [...]}`).
 - `launcher/` is the Launcher: `launcher.py` (a small HTTP server on 127.0.0.1) and `launcher.html`. Its behaviour is specified in dawo-appliance's `docs/launcher-behaviour.md`.
-- An environment is a directory under `environments/` with `environment.json` (what the card shows, `health`, `needs`) and `run.sh start <progress-file> | stop`, run with Git for Windows' bash. Every image is pinned by digest and every source by commit.
+- Known problems and their fixes are in an environment's `environment.json` under `checks`: how to see the problem (`when`: `host_unknown` or a `command` that fails), the text for the person (`problem`), and optionally a `fix` (`run`, `text` = what it changes, shown before it runs, `os`). A start runs the fixes first and the Launcher shows **Nu oplossen**; `launch.py --fix <id>` runs them alone. The format is described in `launch.py`.
+- An environment is a directory under `environments/` with `environment.json` (what the card shows, `health`, `needs`, `checks`) and `run.sh start <progress-file> | stop`, run with Git for Windows' bash. Every image is pinned by digest and every source by commit.
 - State lives in `%LOCALAPPDATA%\launch` (or `LAUNCH_STATE`).
 - Browser test: `cd tests/e2e && npm install && node launcher-behaviour.js "%LOCALAPPDATA%/launch" http://localhost:1900/` (uses Chrome via playwright-core, and starts Haal Centraal for real).
 

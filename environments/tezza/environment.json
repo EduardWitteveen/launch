@@ -343,11 +343,27 @@
     "url": "http://localhost:8082/"
   },
   "needs": {
-    "memory_gib": 12,
-    "host_names": [
-      "identity"
-    ]
+    "memory_gib": 12
   },
+  "checks": [
+    {
+      "id": "identity",
+      "when": {
+        "host_unknown": "identity"
+      },
+      "problem": "De naam 'identity' is op deze computer onbekend; zonder die naam kun je niet inloggen bij Tezza (Keycloak draait op http://identity:8181).",
+      "fix": {
+        "text": "In het hosts-bestand van Windows (C:\\Windows\\System32\\drivers\\etc\\hosts) de regel '127.0.0.1 identity' toevoegen, zodat je bij Tezza kunt inloggen. Er komt eerst een kopie van het oude bestand (hosts.bak-launch). Daarvoor vraagt Windows om beheerdersrechten: klik daar op Ja.",
+        "run": [
+          "../../tools/hostnamen.ps1",
+          "identity"
+        ],
+        "os": [
+          "windows"
+        ]
+      }
+    }
+  ],
   "source": {
     "repo": "https://git.contezza.nl/community/tezza-packaging.git",
     "rev": "fee347967f7f412289ef27a91653e0baa6b5246a",
