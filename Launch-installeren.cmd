@@ -18,7 +18,7 @@ exit /b
 # Then it opens the Launcher. Every environment fetches what it needs itself
 # on its first start.
 $ErrorActionPreference = "Stop"
-$Release = "v0.1.0-rc.3"
+$Release = "v0.1.0-rc.4"
 $Repo = "EduardWitteveen/launch"
 $Dest = Join-Path $env:LOCALAPPDATA "Programs\Launch"
 

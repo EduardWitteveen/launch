@@ -1,20 +1,22 @@
 # Launch
 
+![De Launcher met vijf omgevingen: Tezza draait, de andere kaarten zijn grijs zolang Tezza aan staat](docs/launcher.png)
+
 Met de **Launcher** start, stop en open je omgevingen op je eigen computer, één tegelijk. Een omgeving is een complete applicatie die je wilt laten zien of uitproberen. Nu zijn dat:
 
 | Omgeving | Wat het is | Eerste start |
 |---|---|---|
 | **Mijn Bureau** | Bestanden, samen documenten bewerken en chat, met één inlog. **Werkt nog alleen vanaf de DAWO-USB-SSD**: het draait op Kubernetes. De kaart staat er wel, met die melding. | – |
 | **Tezza** | Het zaak- en documentbeheer van Contezza, compleet zoals Contezza het levert (tezza-packaging 4.15.2: Alfresco, GZAC, Open Zaak, Notificaties, Objecten), met de zaaktypes van Súdwest-Fryslân. | ongeveer 45 minuten (ongeveer 8 GB downloaden), daarna een paar minuten |
-| **Nextcloud Common Ground** | De apps van Conduction (Dossiq, Pipelinq, Portaliq, OpenRegister) in Nextcloud, met demozaken. **Nog in test op Windows.** | ongeveer 20 minuten |
-| **Valtimo** | Zaakgericht werken (GZAC): een aanvraag evenementenvergunning behandelen, met Open Zaak, Objecten en een burgerformulier (Open Formulieren). **Nog in test op Windows.** | ongeveer 30 minuten |
+| **Nextcloud Common Ground** | De apps van Conduction (Dossiq, Pipelinq, Portaliq, OpenRegister) in Nextcloud, met demozaken. | ongeveer 20 minuten |
+| **Valtimo** | Zaakgericht werken (GZAC): een aanvraag evenementenvergunning behandelen, met Open Zaak, Objecten en een burgerformulier (Open Formulieren). | ongeveer 30 minuten |
 | **Haal Centraal** | Persoonsgegevens opvragen bij de BRP-testversie van de RvIG, met fictieve testpersonen. Klein en snel: handig om de Launcher te leren kennen. | een minuut |
 
 Launch is een **experimenteel en onofficieel** project. Het is geen product van Contezza, Conduction, Ritense, de RvIG, Mijn Bureau of een gemeente. Het komt voort uit [dawo-appliance](https://github.com/EduardWitteveen/dawo-appliance) en werkt ook los daarvan.
 
 ## Installeren (Windows 10/11)
 
-1. Download **[Launch-installeren.cmd](https://github.com/EduardWitteveen/launch/releases/download/v0.1.0-rc.3/Launch-installeren.cmd)**.
+1. Download **[Launch-installeren.cmd](https://github.com/EduardWitteveen/launch/releases/download/v0.1.0-rc.4/Launch-installeren.cmd)**.
 2. Dubbelklik erop. Windows waarschuwt misschien ("Windows heeft uw pc beveiligd"). Kies dan *Meer informatie* → *Toch uitvoeren*.
 3. Het bestand zet alles neer wat nodig is en slaat over wat er al is:
    - **Git for Windows** en **Python 3**;
