@@ -25,6 +25,10 @@
 #                           up yet
 #   depends_on              the Admin Tools wait for authorization-profiles
 #     (app-tezza-admin)
+#   dawo.users.json         upstream's default.users.json with launcher in
+#     (authorization-       every profile that has admin: the roles in GZAC
+#     profiles)             (ROLE_USER, ...) come from these profiles, and
+#                           without them 'Mijn taken' answers 403
 #
 # Left out (deploy.sh starts the services by name): app-tezza-akten, which
 # does not start in upstream's setup either (its nginx does not find
@@ -50,6 +54,10 @@ services:
 
   authorization-profiles:
     image: harbor.contezza.nl/public/contezza-authorization-profiles:1.1.0@sha256:57fd3febedb3badd3432a4f7260abded277dee0f871a0953b3413b78b2c3f097
+    volumes:
+      # Upstream's users of the profiles plus launcher wherever admin is
+      # (deploy.sh writes it next to upstream's file before compose up).
+      - ./resources/ap/dawo.users.json:/app/default.users.json
 
   authorization-profiles-db:
     image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929

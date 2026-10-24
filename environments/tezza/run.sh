@@ -28,8 +28,8 @@ export TZ_OVERRIDE="${here}/override.yaml"
 docker_bin="$(command -v docker)"
 export DAWO_DOCKER_DIR="$(dirname "$(dirname "${docker_bin}")")"
 export DAWO_DOCKER_SOCK="$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null)"
-# Git Bash would turn the container's /tmp/... into a Windows path.
-export MSYS2_ARG_CONV_EXCL="/tmp/"
+# Git Bash would turn the container's /tmp/... and /opt/... into Windows paths.
+export MSYS2_ARG_CONV_EXCL="/tmp/;/opt/"
 # deploy.sh's catalog phase reads swf-convert.py and swf-publish.py from the state.
 cp -f "${here}/swf/convert.py" "${TZ_STATE_DIR}/swf-convert.py"
 cp -f "${here}/swf/publish.py" "${TZ_STATE_DIR}/swf-publish.py"
