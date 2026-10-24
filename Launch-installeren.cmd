@@ -94,7 +94,7 @@ foreach ($dir in @([Environment]::GetFolderPath("Programs"), [Environment]::GetF
 }
 Write-Host "Launcher staat in het Startmenu en op het bureaublad."
 
-Step "4. De hostnaam voor het inloggen bij Tezza"
+Step "4. De hostnamen die de omgevingen nodig hebben"
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Dest "tools\hostnamen.ps1")
 
 Step "Klaar"

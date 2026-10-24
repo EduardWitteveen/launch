@@ -373,6 +373,11 @@ def environments():
                            for c in env.get("components", []) if isinstance(c, dict)],
             "pending": {"at": PENDING[eid]} if eid in PENDING else None,
             "problems": check.get("problems", []),
+            # Known problems with a fix, from the environment's checks:
+            # [{id, problem, text}] (`launch --fix`; a start runs them too),
+            # and the problems no fix solves.
+            "fixes": [f for f in check.get("fixes", []) if isinstance(f, dict)],
+            "blocking": check.get("blocking", check.get("problems", [])),
         })
     return result
 
@@ -430,7 +435,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 _CACHE["at"] = 0.0
             self.send(200, json.dumps({"ok": True}))
             return
-        m = re.fullmatch(r"/api/(start|start-now|cancel|stop)/([a-z0-9-]+)", self.path)
+        m = re.fullmatch(r"/api/(start|start-now|cancel|stop|fix)/([a-z0-9-]+)", self.path)
         if not m or not ID_RE.match(m.group(2)):
             self.send(404, json.dumps({"error": "not found"}))
             return
@@ -444,6 +449,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 PENDING.pop(eid, None)
                 _CACHE["at"] = 0.0
             self.send(200, json.dumps({"ok": True, "code": 0, "output": ""}))
+            return
+        if verb == "fix" and CYCLE["active"]:
+            self.send(409, json.dumps({"ok": False, "code": 409, "busy": True,
+                                       "output": "De rondgang loopt; stop die eerst."}))
             return
         if verb in ("start", "start-now") and CYCLE["active"] and eid not in PENDING:
             cycle_stop()  # the user takes over: the round ends (#251)
@@ -476,7 +485,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 PENDING.pop(eid, None)
             if verb == "stop" and CYCLE["active"] and CYCLE["env"] == eid:
                 CYCLE["skip"].set()  # the round goes on with the next one (#257)
-            args = [eid, "--yes"] if verb in ("start", "start-now") else ["--stop", eid]
+            args = ([eid, "--yes"] if verb in ("start", "start-now")
+                    else ["--fix", eid] if verb == "fix" else ["--stop", eid])
             rc, out, err = run(args, timeout=300)
         finally:
             ACTION.release()

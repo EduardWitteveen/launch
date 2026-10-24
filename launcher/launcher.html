@@ -83,6 +83,7 @@
   .notice { border: 1px solid #d9a400; background: #fff8e0; color: #3d3000; border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
   .notice.danger, .warn.danger { border: 2px solid #c62828; background: #fdecea; color: #8e0000; }
   .notice.danger b, .warn.danger { color: #b71c1c; font-weight: 700; }
+  .warn .actions { margin-top: 8px; }
   .notice-text { white-space: pre-wrap; font-size: .9rem; margin: 6px 0; }
   .links { font-size: .9rem; margin: 6px 0; }
   .links summary { cursor: pointer; color: var(--accent); }
@@ -144,18 +145,27 @@ function el(tag, attrs, ...children) {
 }
 
 async function act(verb, env) {
-  if (verb === "start" && env.problems.length &&
-      !confirm("Let op:\n\n" + env.problems.join("\n\n") + "\n\nToch starten?")) return;
+  // Known problems the start fixes itself (env.fixes): say first what it
+  // changes on this computer, then ask; the other problems as before.
+  const blocking = env.blocking || env.problems;
+  const fixing = (verb === "start" || verb === "fix") && (env.fixes || []).length;
+  if (fixing || (verb === "start" && blocking.length)) {
+    const parts = [];
+    if (fixing) parts.push("Launch gaat eerst iets op deze computer veranderen:\n\n- " + env.fixes.map(f => f.text).join("\n- "));
+    if (verb === "start" && blocking.length) parts.push("Let op:\n\n" + blocking.join("\n\n"));
+    if (!confirm(parts.join("\n\n") + "\n\n" + (verb === "fix" ? "Doorgaan?" : (blocking.length ? "Toch starten?" : "Doorgaan en starten?")))) return;
+  }
   if (acting) return;
   acting = true;  // one start or stop at a time (#257)
-  if (verb !== "cancel") INTENT = { id: env.id, verb, from: env.state, at: Date.now() / 1000 };
-  busy[env.id] = "";
+  if (verb !== "cancel" && verb !== "fix") INTENT = { id: env.id, verb, from: env.state, at: Date.now() / 1000 };
+  busy[env.id] = fixing ? "Bezig met oplossen. Vraagt Windows om toestemming, klik dan op Ja (het venster kan achter de browser staan)." : "";
   render(lastData);
   try {
     const r = await fetch(`/api/${verb}/${env.id}`, { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
     const j = await r.json();
     // What launch says, in its own (Dutch) words; never a program's error.
     if (!j.ok) { INTENT = null; busy[env.id] = j.busy ? j.output : (j.output || "Dat lukte niet."); }
+    else if (fixing) busy[env.id] = "";
   } catch (e) {
     // No answer while it starts (the Launcher is busy): the state shows what
     // happens; refresh() asks again and says so when it takes too long.
@@ -291,7 +301,10 @@ function card(env, active) {
     actions.append(el("button", { onclick: () => act("stop", env), ...(acting ? { disabled: "" } : {}) }, "Stoppen"));
   }
   const warn = env.state === "stopped" && env.problems.length
-    ? el("div", { class: "warn" }, "Let op:", el("ul", {}, ...env.problems.map(p => el("li", {}, p))))
+    ? el("div", { class: "warn" }, "Let op:", el("ul", {}, ...env.problems.map(p => el("li", {}, p))),
+        (env.fixes || []).length && !round
+          ? el("div", { class: "actions" }, el("button", { onclick: () => act("fix", env),
+              ...(acting || blocked ? { disabled: "" } : {}) }, "Nu oplossen")) : null)
     : null;
   const section = el("section", { class: blocked ? "card blocked" : "card", "aria-label": env.title },
     el("div", { class: "head" },
