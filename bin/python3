@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# python3 for the environments' bash scripts: the Python that runs launch.py
+# (on Windows "python3" is often the Microsoft Store's placeholder).
+# SPDX-License-Identifier: EUPL-1.2
+exec "${LAUNCH_PYTHON:-python}" "$@"

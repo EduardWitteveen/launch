@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launcher</title>
+<!-- The Launcher (ADR 0008). Served by launcher.py, which fills in the token.
+     Experimental and unofficial. SPDX-License-Identifier: EUPL-1.2 -->
+<style>
+  :root {
+    --bg: #f4f6f8; --card: #ffffff; --text: #1d2733; --muted: #5b6875;
+    --line: #dde3ea; --accent: #1f5fbf; --accent-text: #ffffff;
+    --ok: #1b7f3b; --busy: #a86200; --warn-bg: #fff6e5; --warn: #7a4a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12171d; --card: #1b222b; --text: #e6ebf0; --muted: #9aa7b4;
+      --line: #2c3743; --accent: #6aa5ff; --accent-text: #0d1117;
+      --ok: #5fd08a; --busy: #f0b35a; --warn-bg: #2d2416; --warn: #f0c27a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 48px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 28px; }
+  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .card.blocked, .cycle.blocked { opacity: .5; }
+  .offline { max-width: 1060px; margin: 12px auto 0; padding: 8px 12px; border-radius: 8px; background: #fff3cd; color: #5c4400; }
+  .round-note { font-size: .9rem; color: var(--muted); margin: 6px 0; }
+  .blocked-note { font-size: .9rem; color: var(--muted); margin: 6px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .head { display: flex; gap: 14px; align-items: center; }
+  .logo { width: 48px; height: 48px; border-radius: 10px; background: var(--accent);
+          color: var(--accent-text); display: grid; place-items: center;
+          font-weight: 700; font-size: 1.4rem; flex: none; }
+  .title { font-weight: 650; font-size: 1.15rem; margin: 0; }
+  .version { color: var(--muted); font-size: .85rem; }
+  .summary { margin: 0; color: var(--text); }
+  .state { font-size: .9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .state.ready .dot { background: var(--ok); }
+  .state.starting .dot { background: var(--busy); animation: pulse 1.2s infinite; }
+  .state.failed .dot { background: #c62828; }
+  .failed-text { font-size: .9rem; margin: 6px 0; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .warn { background: var(--warn-bg); color: var(--warn); border-radius: 8px;
+          padding: 10px 12px; font-size: .9rem; }
+  .warn ul { margin: 6px 0 0; padding-left: 18px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
+  button, a.button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 16px;
+          border: 1px solid var(--line); background: transparent; color: var(--text);
+          cursor: pointer; text-decoration: none; }
+  button.primary, a.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: .5; cursor: default; }
+  button:focus-visible, a.button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .login { color: var(--muted); font-size: .85rem; }
+  .message { color: var(--muted); font-size: .85rem; min-height: 1.2em; }
+  footer { margin-top: 32px; color: var(--muted); font-size: .85rem; }
+  /* Progress while an environment starts (#232): the whole start on top,
+     the current step below. */
+  .progress { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; }
+  .prow { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
+  .prow b { color: var(--text); font-weight: 600; }
+  .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+  .bar.step { height: 6px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); border-radius: inherit;
+               transition: width .8s linear; }
+  .bar.step > div { background: var(--busy); }
+  .bar.waiting > div { width: 35% !important; animation: slide 1.6s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+  .plabel { font-weight: 600; margin-top: 4px; }
+  .ptime { color: var(--muted); font-size: .85rem; }
+  .peta { color: var(--muted); font-size: .85rem; }
+  .auto { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--warn-bg);
+          color: var(--warn); border-radius: 8px; padding: 10px 12px; font-weight: 600; }
+  .auto button { font-size: .85rem; padding: 6px 12px; }
+  .cycle { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px;
+           margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; font-size: .95rem; }
+  .cycle.active { border-color: var(--accent); }
+  .notice { border: 1px solid #d9a400; background: #fff8e0; color: #3d3000; border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+  .notice.danger, .warn.danger { border: 2px solid #c62828; background: #fdecea; color: #8e0000; }
+  .notice.danger b, .warn.danger { color: #b71c1c; font-weight: 700; }
+  .notice-text { white-space: pre-wrap; font-size: .9rem; margin: 6px 0; }
+  .links { font-size: .9rem; margin: 6px 0; }
+  .links summary { cursor: pointer; color: var(--accent); }
+  .links ul { margin: 6px 0 0; padding-left: 18px; }
+  .linklogin { color: var(--muted); }
+  .licences { font-size: .85rem; margin: 4px 0; }
+  .licences summary { cursor: pointer; }
+  .licences ul { margin: 6px 0 0; padding-left: 18px; }
+  .lic-green > summary::before, .lic-yellow > summary::before, .lic-red > summary::before { content: "● "; }
+  .lic-green > summary::before { color: #2e7d32; }
+  .lic-yellow > summary::before { color: #b58900; }
+  .lic-red > summary::before { color: #c62828; }
+  .lic-reason, .lic-count { margin: 6px 0; }
+  .lic-sub { margin: 4px 0 0 12px; }
+  .lic-sub > summary { color: var(--accent); }
+  .lic-item { list-style: none; margin-left: -18px; }
+  .lic-item::before { content: "● "; }
+  .lic-item.lic-open::before { color: #2e7d32; }
+  .lic-item.lic-restricted::before, .lic-item.lic-unknown::before { color: #b58900; }
+  .lic-item.lic-closed::before { color: #c62828; }
+  .lic-item.lic-closed { font-weight: 600; }
+  .cycle-last { margin: 0; padding-left: 18px; color: var(--muted); font-size: .85rem; }
+  .pdetail { color: var(--muted); font-size: .8rem; font-style: italic; overflow-wrap: anywhere; }
+  .perror { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 10px 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    .bar > div { transition: none; }
+    .bar.waiting > div { animation: none; width: 100% !important; opacity: .4; }
+  }
+</style>
+</head>
+<body>
+<p id="offline" class="offline" hidden>De Launcher reageert even niet; we proberen het opnieuw.</p>
+<main>
+  <h1>Launcher</h1>
+  <p class="lead">Kies een omgeving om te proberen. De eerste keer duurt starten lang (alles wordt gedownload: reken op een half uur tot een uur); daarna gaat het veel sneller. Hieronder zie je steeds bij welke stap het is.</p>
+  <div id="cycle"></div>
+  <div class="grid" id="grid" aria-live="polite"><p>Even geduld…</p></div>
+  <footer>Experimenteel en onofficieel. Er draait één omgeving tegelijk.</footer>
+</main>
+<script>
+"use strict";
+const TOKEN = "__LAUNCHER_TOKEN__";
+const STATE = { ready: "Klaar", starting: "Wordt gestart…", stopped: "Niet actief", failed: "Starten mislukt" };
+const busy = {};
+let acting = false;
+// What was just pressed (#284), shown at once until the server agrees, so
+// there is no state in between: {id, verb, from, at} for a card, and
+// {active, at} for the round.
+let INTENT = null, ROUND_INTENT = null;
+let lastAnswer = Date.now() / 1000;  // the last time the Launcher answered
+
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+  }
+  for (const c of children) if (c != null) e.append(c);
+  return e;
+}
+
+async function act(verb, env) {
+  if (verb === "start" && env.problems.length &&
+      !confirm("Let op:\n\n" + env.problems.join("\n\n") + "\n\nToch starten?")) return;
+  if (acting) return;
+  acting = true;  // one start or stop at a time (#257)
+  if (verb !== "cancel") INTENT = { id: env.id, verb, from: env.state, at: Date.now() / 1000 };
+  busy[env.id] = "";
+  render(lastData);
+  try {
+    const r = await fetch(`/api/${verb}/${env.id}`, { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
+    const j = await r.json();
+    // What launch says, in its own (Dutch) words; never a program's error.
+    if (!j.ok) { INTENT = null; busy[env.id] = j.busy ? j.output : (j.output || "Dat lukte niet."); }
+  } catch (e) {
+    // No answer while it starts (the Launcher is busy): the state shows what
+    // happens; refresh() asks again and says so when it takes too long.
+  }
+  acting = false;
+  render(lastData);
+  lastJson = "";
+  refresh();
+}
+
+// Cancel the automatic start (#238).
+async function cancelAuto() {
+  try {
+    await fetch("/api/autostart/cancel", { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
+  } catch (e) { /* the next refresh shows the state */ }
+  lastJson = ""; lastCycle = "";
+  refresh(); refreshCycle();
+}
+
+function autoBlock(env) {
+  return el("div", { class: "auto", "data-auto-at": env.autostart.at },
+    el("span", { class: "auto-text" }, "Start automatisch…"),
+    el("button", { onclick: cancelAuto }, "Niet automatisch starten"));
+}
+
+// The environment's notice before it starts (#261), with a countdown.
+function noticeBlock(env) {
+  const n = env.notice;
+  return el("div", { class: "notice" + (n.level === "danger" ? " danger" : ""), "data-auto-at": env.pending.at },
+    el("b", {}, n.title || "Let op"),
+    el("p", { class: "notice-text" }, n.text || ""),
+    el("span", { class: "auto-text", "data-what": "De omgeving" }, ""),
+    el("div", { class: "actions" },
+      el("button", { class: "primary", onclick: () => act("start-now", env) }, "Nu starten"),
+      el("button", { onclick: () => act("cancel", env) }, "Niet starten")));
+}
+
+// BEGIN licences
+// Licences per repository (#273). Closed, one quiet line with the colour as a
+// dot (the maintainer's review of 23 October: the red text shouted, was too
+// long, and named the colour twice). Opened: why, the count, and two lists
+// that open on their own: the parts (not clearly open source first) and the
+// licences used.
+const LIC_CLASS = { closed: "gesloten", restricted: "beperkte licentie", unknown: "geen licentie gevonden", open: "open source" };
+const LIC_ORDER = { closed: 0, restricted: 1, unknown: 2, open: 3 };
+const LIC_TITLE = { green: "Alles open source", yellow: "Onduidelijke licenties", red: "Niet alles open source" };
+function licencesBlock(env) {
+  const l = env.licences;
+  if (!l || !l.total) return null;
+  // The count per licence: a choice counts as its first, "-only" and
+  // "-or-later" together (the list has the full expression).
+  const short = {};
+  for (const [k, n] of Object.entries(l.counts || {})) {
+    const s = k.split(" OR ")[0].replace(/-(only|or-later)$/, "").replace(/^LicenseRef-/, "");
+    short[s] = (short[s] || 0) + n;
+  }
+  const used = Object.entries(short).sort((a, b) => b[1] - a[1]).map(([k, n]) => el("li", {}, `${k}: ${n}`));
+  const cls = Object.fromEntries((l.classes || []).map(c => [c.name, c.class]));
+  const comps = [...(env.components || [])].sort((a, b) => LIC_ORDER[cls[a.name] || "unknown"] - LIC_ORDER[cls[b.name] || "unknown"]);
+  const what = c => {
+    const k = cls[c.name] || "unknown";
+    if (k === "open") return c.license.replace(/^LicenseRef-/, "");
+    if (c.license.startsWith("LicenseRef-proprietary") || c.license === "NOASSERTION") return LIC_CLASS[k];
+    return `${LIC_CLASS[k]} (${c.license})`;
+  };
+  const items = comps.map(c => el("li", { class: "lic-item lic-" + (cls[c.name] || "unknown") },
+    el("a", { href: c.repo, target: "_blank", rel: "noopener" }, c.name),
+    el("span", {}, " · " + what(c))));
+  return el("details", { class: "licences lic-" + l.level },
+    el("summary", {}, LIC_TITLE[l.level] || "Licenties"),
+    l.reason ? el("p", { class: "lic-reason" }, l.reason) : null,
+    el("p", { class: "lic-count" }, `${l.open} van ${l.total} onderdelen open source.`),
+    el("details", { class: "lic-sub" }, el("summary", {}, `Onderdelen (${items.length})`), el("ul", {}, ...items)),
+    used.length ? el("details", { class: "lic-sub" }, el("summary", {}, `Gebruikte licenties (${used.length})`), el("ul", {}, ...used)) : null);
+}
+// END licences
+// The data as the page shows it: what was just pressed applied, until the
+// server agrees (or after two minutes).
+function view(data) {
+  const now = Date.now() / 1000;
+  if (INTENT && now - INTENT.at > 120) INTENT = null;
+  return data.map(e => {
+    if (!INTENT || INTENT.id !== e.id) return e;
+    if (INTENT.verb === "stop") {
+      if (e.state !== "stopped") return { ...e, stopping: true };
+    } else if (e.state === INTENT.from && !e.pending) {
+      return { ...e, state: "starting", progress: null };
+    }
+    INTENT = null;
+    return e;
+  });
+}
+
+// BEGIN active environment
+// One environment at a time (ADR 0008, #284): the one that is not stopped,
+// or waits for its notice. While it is there the other cards are greyed out
+// and cannot be started; it has to be stopped first.
+// The round (rondgang) the same way: while it runs, it alone is in charge
+// and only "Rondgang stoppen" can be pressed (every card is greyed out, also
+// the one it is at); while an environment runs, the round cannot be started.
+function activeEnv(data) {
+  return data.find(e => e.state !== "stopped" || e.pending) || null;
+}
+// END active environment
+let ROUND_ACTIVE = false;   // from /api/cycle
+let ACTIVE_ENV = null;      // from /api/environments
+
+function card(env, active) {
+  const actions = el("div", { class: "actions" });
+  const round = ROUND_ACTIVE;
+  const isActive = !!active && active.id === env.id;
+  // Greyed out: every card but the active one. Openen is no control, so the
+  // active environment opens when it is ready, also while the round runs.
+  const blocked = !!active ? !isActive : round;
+  if (env.stopping) {
+    // being stopped: nothing to press until it is
+  } else if (round) {
+    // the round's own button stops it; only Openen
+    if (env.state === "ready") actions.append(el("a", { class: "button primary", href: env.url, target: "_blank", rel: "noopener" }, "Openen"));
+  } else if (env.pending) {
+    // the notice block carries the buttons
+  } else if (env.state === "stopped") {
+    actions.append(el("button", { class: "primary", onclick: () => act("start", env), ...(acting || blocked ? { disabled: "" } : {}) }, "Starten"));
+  } else if (env.state === "failed") {
+    // A failed start (#282): try again or stop it; what answers opens from
+    // a link in the text (two buttons fit on one line).
+    actions.append(el("button", { class: "primary", onclick: () => act("start", env), ...(acting ? { disabled: "" } : {}) }, "Opnieuw proberen"));
+    actions.append(el("button", { onclick: () => act("stop", env), ...(acting ? { disabled: "" } : {}) }, "Stoppen"));
+  } else {
+    if (env.state === "ready") {
+      actions.append(el("a", { class: "button primary", href: env.url, target: "_blank", rel: "noopener" }, "Openen"));
+    }
+    actions.append(el("button", { onclick: () => act("stop", env), ...(acting ? { disabled: "" } : {}) }, "Stoppen"));
+  }
+  const warn = env.state === "stopped" && env.problems.length
+    ? el("div", { class: "warn" }, "Let op:", el("ul", {}, ...env.problems.map(p => el("li", {}, p))))
+    : null;
+  const section = el("section", { class: blocked ? "card blocked" : "card", "aria-label": env.title },
+    el("div", { class: "head" },
+      el("div", { class: "logo", "aria-hidden": "true" }, env.title.charAt(0)),
+      el("div", {}, el("p", { class: "title" }, env.title), el("span", { class: "version" }, env.version))),
+    el("p", { class: "summary" }, env.summary),
+    licencesBlock(env),
+    el("div", { class: "state " + (env.stopping ? "starting" : env.state) }, el("span", { class: "dot" }),
+       env.stopping ? "Wordt gestopt…" : (STATE[env.state] || env.state)),
+    env.state === "starting" && !env.stopping ? progressBlock(env) : null,
+    env.state === "failed" && !env.pending
+      ? el("p", { class: "failed-text" }, ((env.progress || {}).error || "Het starten is niet gelukt.") + " ",
+          env.answers ? el("a", { href: env.url, target: "_blank", rel: "noopener" }, "Openen wat wel werkt") : null) : null,
+    env.state === "stopped" && env.autostart ? autoBlock(env) : null,
+    env.pending && env.notice ? noticeBlock(env) : null,
+    env.state === "stopped" && !env.pending && env.notice
+      ? el("div", { class: env.notice.level === "danger" ? "warn danger" : "warn" }, env.notice.title || "Let op") : null,
+    warn,
+    env.state === "ready" && env.login ? el("div", { class: "login" }, "Inloggen: " + env.login) : null,
+    env.state === "ready" && env.links && env.links.length
+      ? el("details", { class: "links" }, el("summary", {}, "Ook in deze omgeving"),
+          el("ul", {}, ...env.links.map(l => el("li", {},
+            el("a", { href: l.url, target: "_blank", rel: "noopener" }, l.title),
+            l.login ? el("span", { class: "linklogin" }, " · " + l.login) : null))))
+      : null,
+    round && isActive ? el("p", { class: "round-note" }, "Gestart door de rondgang.") : null,
+    el("div", { class: "message" }, busy[env.id] || ""),
+    actions);
+  return blocked ? inert(section, env, round) : section;
+}
+
+// Grey means inert (#284): what the card is, nothing to do with it. Lists
+// that unfold become a plain line, links plain text, buttons go; one
+// exception: a second environment that runs anyway keeps its Stoppen.
+function inert(section, env, round) {
+  for (const d of [...section.querySelectorAll("details")]) {
+    const s = d.querySelector("summary");
+    d.replaceWith(el("p", { class: d.className + " folded" }, s ? s.textContent : ""));
+  }
+  for (const a of [...section.querySelectorAll("a")]) a.replaceWith(a.textContent);
+  const keepStop = !round && env.state !== "stopped";
+  for (const b of [...section.querySelectorAll("button")]) {
+    if (!(keepStop && b.textContent === "Stoppen")) b.remove();
+  }
+  return section;
+}
+
+// "1 min 20 s", "7 min", "45 s"
+function dur(s) {
+  s = Math.max(0, Math.round(s));
+  if (s < 60) return s + " s";
+  const m = Math.floor(s / 60), r = s % 60;
+  return m < 10 && r ? `${m} min ${r} s` : `${Math.round(s / 60)} min`;
+}
+
+// The progress an environment reports while it starts (#232): a bar for the
+// whole start and one for the current step. Before the environment reports
+// anything, a moving bar says that it is being prepared. The times are
+// filled in by tick(), every second, without redrawing the card.
+function progressBlock(env) {
+  const p = env.progress;
+  if (!p) {
+    return el("div", { class: "progress" },
+      el("div", { class: "prow" }, el("b", {}, "Voorbereiden…")),
+      el("div", { class: "bar waiting" }, el("div", {})),
+      el("div", { class: "ptime" }, "De omgeving wordt klaargezet; zo meteen zie je de stappen."));
+  }
+  const box = el("div", { class: "progress", "data-id": env.id, "data-step": p.step, "data-steps": p.steps,
+                          "data-started": p.started, "data-since": p.since || "", "data-expected": p.expected || "",
+                          "data-rest": p.rest ?? "" },
+    el("div", { class: "prow" }, el("b", {}, `Stap ${p.step} van ${p.steps}`), el("span", { class: "psince" }, "")),
+    el("div", { class: "bar overall", role: "progressbar", "aria-label": "Totale voortgang" }, el("div", {})),
+    el("div", { class: "peta" }, ""),
+    el("div", { class: "plabel" }, p.label || ""),
+    el("div", { class: "bar step" + (p.expected ? "" : " waiting"), role: "progressbar", "aria-label": "Voortgang van deze stap" }, el("div", {})),
+    el("div", { class: "ptime" }, ""),
+    el("div", { class: "pdetail" }, ""));
+  if (p.error) box.append(el("div", { class: "perror" }, p.error));
+  setDetail(box, p);
+  return box;
+}
+
+// What the environment does right now (#235), updated in place.
+function setDetail(box, p) {
+  box.dataset.activity = p.activity || "";
+  box.querySelector(".pdetail").textContent = p.detail ? "Nu: " + p.detail : "";
+}
+
+function clock(t) {
+  return new Date(t * 1000).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+}
+
+// BEGIN progress texts
+// The step's time and the estimate. When it will be ready (#235): what is
+// left of this step plus the steps after it, as they went last time on this
+// machine. Once the step takes longer than last time there is no estimate:
+// it said "nog ongeveer 2 min" for 50 minutes on the Dell (#279). Whether
+// something still happens, "laatste activiteit" tells.
+function progressTexts(elapsed, exp, rest, now) {
+  if (!exp) return { time: `${dur(elapsed)} bezig`, eta: null };
+  if (elapsed <= exp * 1.15) {
+    const time = `${dur(elapsed)} van ongeveer ${dur(exp)}`;
+    if (rest === "" || rest == null) return { time, eta: null };
+    const left = Math.max(exp - elapsed, 30) + +rest;
+    return { time, eta: `nog ongeveer ${dur(left)} · klaar rond ${clock(now + left)}` };
+  }
+  return { time: `${dur(elapsed)} bezig; vorige keer duurde deze stap ${dur(exp)}.`,
+           eta: rest === "" || rest == null ? null : "duurt langer dan vorige keer; geen schatting" };
+}
+// END progress texts
+
+function tick() {
+  const now = Date.now() / 1000;
+  const off = document.getElementById("offline");
+  if (off) off.hidden = now - lastAnswer < 30;
+  for (const box of document.querySelectorAll(".auto[data-auto-at]")) {
+    const left = Math.max(0, Math.ceil(+box.dataset.autoAt - now));
+    const t = box.querySelector(".auto-text"), what = t.dataset.what;
+    t.textContent = what
+      ? (left > 0 ? `${what} start automatisch over ${dur(left)}` : `${what} wordt nu gestart…`)
+      : (left > 0 ? `Start automatisch over ${dur(left)}` : "Wordt nu automatisch gestart…");
+  }
+  for (const box of document.querySelectorAll(".progress[data-started]")) {
+    const step = +box.dataset.step, steps = +box.dataset.steps, exp = +box.dataset.expected;
+    const elapsed = now - +box.dataset.started;
+    const frac = exp ? Math.min(elapsed / exp, 0.97) : 0;
+    const overall = Math.min(1, (step - 1 + frac) / steps);
+    const ob = box.querySelector(".bar.overall"), sb = box.querySelector(".bar.step");
+    ob.firstChild.style.width = (overall * 100).toFixed(1) + "%";
+    ob.setAttribute("aria-valuenow", Math.round(overall * 100));
+    if (exp) sb.firstChild.style.width = (frac * 100).toFixed(1) + "%";
+    const pt = progressTexts(elapsed, exp, box.dataset.rest, now);
+    let t = pt.time;
+    const act = +box.dataset.activity, started = +box.dataset.started;
+    if (act && act >= started - 5) t += ` · laatste activiteit ${dur(now - act)} geleden`;
+    box.querySelector(".ptime").textContent = t;
+    if (box.dataset.since) box.querySelector(".psince").textContent = "bezig sinds " + dur(now - +box.dataset.since);
+    if (pt.eta !== null) box.querySelector(".peta").textContent = pt.eta;
+  }
+}
+setInterval(tick, 1000);
+
+let lastData = [];
+function render(data) {
+  const grid = document.getElementById("grid");
+  // Keep opened lists (links, licences) open across a redraw.
+  // The key: card, class, parent and the summary's first word (the licence
+  // block has two sub-lists with the same class).
+  const key = d => [d.closest(".card").getAttribute("aria-label"), d.className, d.parentElement.className,
+                    (d.querySelector("summary")?.textContent || "").split(" ")[0]].join("|");
+  data = view(data);
+  const active = activeEnv(data);
+  const changed = (ACTIVE_ENV && ACTIVE_ENV.id) !== (active && active.id);
+  ACTIVE_ENV = active;
+  if (changed && lastCycleData) renderCycle(lastCycleData);
+  const opened = new Set([...grid.querySelectorAll("details[open]")].map(key));
+  grid.replaceChildren(...(data.length ? data.map(e => card(e, active)) : [el("p", {}, "Er zijn geen omgevingen.")]));
+  for (const d of grid.querySelectorAll("details")) {
+    if (opened.has(key(d))) d.open = true;
+  }
+  tick();
+}
+
+let lastJson = "";
+async function refresh() {
+  try {
+    const r = await fetch("/api/environments", { cache: "no-store" });
+    const data = JSON.parse(await r.text());
+    // Redraw only when something changed, so a button is not replaced under
+    // the user's pointer every few seconds. The current activity changes
+    // often: it is updated in place (#235).
+    const stable = JSON.stringify(data, (k, v) => (k === "detail" || k === "activity" ? undefined : v));
+    lastData = data;
+    lastAnswer = Date.now() / 1000;
+    if (stable === lastJson) {
+      for (const env of data) {
+        const box = env.progress && document.querySelector(`.progress[data-id="${env.id}"]`);
+        if (box) setDetail(box, env.progress);
+      }
+      return;
+    }
+    lastJson = stable;
+    render(lastData);
+  } catch (e) { /* the next refresh tries again */ }
+}
+refresh();
+setInterval(refresh, 5000);
+
+// The round (#251): every environment in turn, as a test that runs by itself.
+const title = id => (lastData.find(e => e.id === id) || {}).title || id || "";
+async function cycleAct(verb) {
+  if (verb === "start" || verb === "stop") {
+    const on = verb === "start";
+    ROUND_INTENT = { active: on, at: Date.now() / 1000 };
+    ROUND_ACTIVE = on;
+    renderCycle({ ...(lastCycleData || {}), available: true, active: on, round: (lastCycleData || {}).round || 1, phase: on ? "pause" : "", until: 0 });
+    render(lastData);
+  }
+  try {
+    await fetch(`/api/cycle/${verb}`, { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
+  } catch (e) { /* the next refresh shows the state */ }
+  lastCycle = ""; refreshCycle(); lastJson = ""; refresh();
+}
+let lastCycleData = null;
+function renderCycle(c) {
+  lastCycleData = c;
+  const box = document.getElementById("cycle");
+  if (!c.available) { box.replaceChildren(); return; }
+  const kids = [];
+  if (c.active) {
+    kids.push(el("div", { class: "cycle-head" },
+      el("b", {}, `Rondgang (ronde ${c.round})`), " · ",
+      el("span", { class: "cycle-now", "data-phase": c.phase || "", "data-until": c.until || "",
+                   "data-env": title(c.env), "data-next": title(c.next) }, "")));
+    kids.push(el("div", { class: "actions" },
+      el("button", { class: "primary", onclick: () => cycleAct("stop") }, "Rondgang stoppen")));
+  } else {
+    kids.push(el("div", { class: "cycle-head" }, el("b", {}, "Rondgang"), " · alle omgevingen om de beurt starten, 5 minuten laten draaien en weer stoppen: een test die vanzelf doorloopt."));
+    if (c.autostart) {
+      // The round as the automatic start (#257), with a way out.
+      kids.push(el("div", { class: "auto", "data-auto-at": c.autostart.at },
+        el("span", { class: "auto-text", "data-what": "De rondgang" }, "Start automatisch…"),
+        el("button", { onclick: cancelAuto }, "Niet automatisch starten")));
+    }
+    kids.push(el("div", { class: "actions" }, ACTIVE_ENV ? null : el("button", { onclick: () => cycleAct("start") }, "Rondgang nu starten")));
+  }
+  if (c.can_persist && !(ACTIVE_ENV && !c.active)) {
+    // A marker on the stick: the round begins at once at the next start-up too.
+    kids[kids.length - 1].append(el("button", { onclick: () => cycleAct(c.persisted ? "persist-off" : "persist-on") },
+      c.persisted ? "Na herstart meteen verder: aan (uitzetten)" : "Na herstart meteen verder: uit (aanzetten)"));
+  }
+  if (c.last && c.last.length) {
+    kids.push(el("ul", { class: "cycle-last" }, ...c.last.slice(-3).map(l => el("li", {}, l))));
+  }
+  box.replaceChildren(el("section", { class: "cycle" + (c.active ? " active" : "") + (!c.active && ACTIVE_ENV ? " blocked" : "") }, ...kids));
+  tickCycle();
+}
+function tickCycle() {
+  const s = document.querySelector(".cycle-now");
+  if (!s) return;
+  const left = s.dataset.until ? Math.max(0, Math.ceil(+s.dataset.until - Date.now() / 1000)) : 0;
+  const env = s.dataset.env, next = s.dataset.next;
+  const t = {
+    pause: `${env} start over ${dur(left)}`,
+    starting: `${env} wordt gestart (zie de kaart)`,
+    up: `${env} is klaar, nog ${dur(left)} in de lucht`,
+    stopping: `${env} wordt gestopt`,
+  }[s.dataset.phase] || "";
+  s.textContent = t + (next && next !== env ? ` · daarna ${next}` : "");
+}
+setInterval(tickCycle, 1000);
+let lastCycle = "";
+async function refreshCycle() {
+  try {
+    const r = await fetch("/api/cycle", { cache: "no-store" });
+    const text = await r.text();
+    if (text === lastCycle) return;
+    lastCycle = text;
+    const c = JSON.parse(text);
+    // Until the server agrees with what was just pressed (or a minute on).
+    if (ROUND_INTENT && Date.now() / 1000 - ROUND_INTENT.at < 60 && !!c.active !== ROUND_INTENT.active) { lastCycle = ""; return; }
+    ROUND_INTENT = null;
+    const was = ROUND_ACTIVE;
+    ROUND_ACTIVE = !!c.active;
+    renderCycle(c);
+    if (was !== ROUND_ACTIVE) { lastJson = ""; refresh(); }
+  } catch (e) { /* the next refresh tries again */ }
+}
+refreshCycle();
+setInterval(refreshCycle, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Haal Centraal (#284): a small environment that starts in seconds, so the
+# Launcher's behaviour can be tried without waiting an hour. Haal Centraal's
+# BRP personen-mock (the RvIG's test version of the BRP API "Personen
+# bevragen", also in Contezza's Tezza compose) behind a small nginx that
+# serves a Dutch page to ask it.
+# Images pinned by digest (AGENTS rule 4).
+#
+# SPDX-License-Identifier: EUPL-1.2
+name: haalcentraal
+
+services:
+  brp:
+    image: ghcr.io/brp-api/personen-mock:2.7.0-latest@sha256:613605a8e613e0610d5209b67e8371ea5355085834951bfe105d9e4229d4571a
+    environment:
+      ASPNETCORE_URLS: http://+:5010
+
+  web:
+    image: docker.io/library/nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    ports:
+      - "${HAALCENTRAAL_PORT:-18795}:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - brp

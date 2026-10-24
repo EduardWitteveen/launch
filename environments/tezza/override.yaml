@@ -1,0 +1,149 @@
+# Our changes to Contezza's tezza-packaging (4.15.2, docker-compose.yml), kept
+# apart from its files (#261). Applied as a second -f file. The product as
+# Contezza ships it, every service (the maintainer, 24 October: "gewoon out of
+# the box", "zo veel mogelijk als het originele product"), with only these
+# changes, each with its reason:
+#
+#   image: ...@sha256:...   pinned by digest (AGENTS rule 4); the tags are
+#                           upstream's own, the digests are in the manifest
+#   redis 8.2.2             instead of upstream's redis:7 (7.4 is RSALv2/SSPL
+#                           only; 8.x adds AGPLv3, #273), as in Valtimo
+#   SPRING_PROFILES_ACTIVE  upstream's gzac-backend stops at start: its case
+#     (gzac-backend)        definition destructionProcedureDossier is a draft,
+#                           which needs a dev profile ("This Valtimo
+#                           environment does not support drafts"); without it
+#                           Tezza cannot register cases. The dev profile also
+#                           moves its port to 9092: SERVER_PORT keeps upstream's
+#                           8080, where the apps proxy /gzac/ ('Mijn taken')
+#   LDAP_REMOVE_CONFIG_...  osixia/openldap deletes its bootstrap directory
+#     (openldap)            after the first start, and every later start fails
+#                           copying the seed there: the image's own switch
+#   restart: on-failure     Open Zaak's start script stops at its first error
+#     (openzaak, -celery,   and upstream has no restart policy (it never
+#     app-tezza, -admin)    answered on the Dell run of 23 October); the apps'
+#                           nginx stops for good when an upstream host is not
+#                           up yet
+#   depends_on              the Admin Tools wait for authorization-profiles
+#     (app-tezza-admin)
+#
+# Left out (deploy.sh starts the services by name): app-tezza-akten, which
+# does not start in upstream's setup either (its nginx does not find
+# alfresco.local). Nothing else differs from upstream.
+
+services:
+  app-tezza:
+    image: harbor.contezza.nl/public/apps/tezza:4.15.2@sha256:fee07a13aac04eee3e524c30971cb58d5844b52a7eaf78807148549fd3a3fc96
+    restart: on-failure
+
+  app-tezza-admin:
+    image: harbor.contezza.nl/public/apps/tezza-admin:4.15.2@sha256:f0284030e86bbe80f5ad7429328940a701dad10d726f3340947c650fc5c18091
+    depends_on: !override
+      - platform
+      - authorization-profiles
+    restart: on-failure
+
+  app-tezza-reports:
+    image: harbor.contezza.nl/public/apps/tezza-reports:4.15.2@sha256:18884c74ad4865a35b1eb9ab62b3047c700645bfad88e51733a03110ded88137
+
+  app-tezza-rm:
+    image: harbor.contezza.nl/public/apps/tezza-rm:4.15.2@sha256:cce11b7701490890376a82c576f72ae1d6b19853d839d4524fba2b1dc1ab25ce
+
+  authorization-profiles:
+    image: harbor.contezza.nl/public/contezza-authorization-profiles:1.1.0@sha256:57fd3febedb3badd3432a4f7260abded277dee0f871a0953b3413b78b2c3f097
+
+  authorization-profiles-db:
+    image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+
+  gzac-backend:
+    image: harbor.contezza.nl/public/tezza-gzac-backend:4.15.2@sha256:49c49df627e7c5456ffc59999b8155566ba59d2ceb114f6d7568e8e92868c2b6
+    environment:
+      SPRING_PROFILES_ACTIVE: "localhost,dev"
+      SERVER_PORT: "8080"
+
+  gzac-db:
+    image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+
+  gzac-frontend:
+    image: harbor.contezza.nl/public/apps/tezza-gzac-frontend:1.4.1@sha256:4f3adcf5a9c0adfc23676000bc20729be582d07b5a7e2a1c2dfef9a1d469782e
+
+  identity:
+    image: harbor.contezza.nl/public/tezza-identity:4.15.2@sha256:e37248b454f3f3e299dc4db3a9b41c75a87eef191e0ad1fb18c3231344dd744d
+
+  identity-db:
+    image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+
+  notificaties:
+    image: docker.io/openzaak/open-notificaties:1.15.0@sha256:5a2f7e04efe6062b71ae9e1b4bef2bf16f2f60c8f1d8b9632fbeab4b90c91c5a
+
+  notificaties-celery:
+    image: docker.io/openzaak/open-notificaties:1.15.0@sha256:5a2f7e04efe6062b71ae9e1b4bef2bf16f2f60c8f1d8b9632fbeab4b90c91c5a
+
+  notificaties-db:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+
+  notificaties-rabbitmq:
+    image: rabbitmq:3.7-alpine@sha256:617a63a5f3626432fe2cc7c3388028529d612b72012d5d8df202c0b5b1920b42
+
+  notificaties-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+
+  objecten:
+    image: maykinmedia/objects-api:3.6.0@sha256:8b4ac4dd97c32b1bc250faf88ebae6229eccad6787dc9bd2932edbc0336265e2
+
+  objecten-celery:
+    image: maykinmedia/objects-api:3.6.0@sha256:8b4ac4dd97c32b1bc250faf88ebae6229eccad6787dc9bd2932edbc0336265e2
+
+  objecten-db:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+
+  objecten-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+
+  objecttypen:
+    image: maykinmedia/objecttypes-api:3.4.2@sha256:d366e6ede1bb924ea351495f4e88ceba53bb0df02fa5302929daef379131fda1
+
+  objecttypen-db:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+
+  objecttypen-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+
+  openldap:
+    image: osixia/openldap:1.5.0@sha256:18742e9c449c9c1afe129d3f2f3ee15fb34cc43e5f940a20f3399728f41d7c28
+    environment:
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
+
+  openzaak:
+    image: docker.io/openzaak/open-zaak:1.28.0@sha256:2c023fa44aa4e77c37f7e9ae3941f82630d0805cf7fda79bdc06294cf002beb5
+    restart: on-failure
+
+  openzaak-celery:
+    image: docker.io/openzaak/open-zaak:1.28.0@sha256:2c023fa44aa4e77c37f7e9ae3941f82630d0805cf7fda79bdc06294cf002beb5
+    restart: on-failure
+
+  openzaak-db:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+
+  openzaak-redis:
+    image: docker.io/library/redis:8.2.2@sha256:4521b581dbddea6e7d81f8fe95ede93f5648aaa66a9dacd581611bf6fe7527bd
+
+  personen-mock:
+    image: ghcr.io/brp-api/personen-mock:2.7.0-latest@sha256:613605a8e613e0610d5209b67e8371ea5355085834951bfe105d9e4229d4571a
+
+  platform:
+    image: harbor.contezza.nl/public/tezza-platform:4.15.2@sha256:0bbf1d102fef610db99d090de3b86c603bc16924c8beeed6dc7db8b4f7995799
+
+  platform-activemq:
+    image: docker.io/alfresco/alfresco-activemq:5.15.8@sha256:f0d855904632ffea6d4f32c16f8887845a10adda60e98a936a708a366b243e2c
+
+  platform-ass:
+    image: docker.io/alfresco/alfresco-search-services:2.0.8.2@sha256:8150e76574964cdd560459179846bee6f8b342e915ecc9116a4d51fa1514e443
+
+  platform-db:
+    image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+
+  platform-transform-core-aio:
+    image: alfresco/alfresco-transform-core-aio:3.1.1@sha256:c50472d06023889f287bea8558982f778277668a80cfeecb69bd5415b4f148d8
+
+  share:
+    image: harbor.contezza.nl/public/tezza-share:4.15.2@sha256:c9de28cb644be164d5bd3fec25bc3c77d35b2059bbebb4d47aeb555b58bb9bc4

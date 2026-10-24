@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- Haal Centraal's page (#284): ask Haal Centraal's BRP personen-mock for a test person.
+     SPDX-License-Identifier: EUPL-1.2 -->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haal Centraal BRP</title>
+<style>
+  :root { --bg: #f4f6f8; --card: #fff; --text: #1d2733; --muted: #5b6875; --accent: #1f5fbf; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #12171d; --card: #1b222b; --text: #e6ebf0; --muted: #9aa7b4; --accent: #6fa3ff; } }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px; }
+  .card { background: var(--card); border-radius: 12px; padding: 20px; margin-top: 16px; }
+  label, select, input, button { font-size: 1rem; }
+  input, select { padding: 6px 8px; margin-right: 8px; }
+  button { padding: 7px 14px; background: var(--accent); color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+  dt { color: var(--muted); }
+  .muted { color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Haal Centraal BRP</h1>
+  <p class="muted">De testversie van de BRP-API <em>Personen bevragen</em> van de RvIG, met fictieve testpersonen.
+    Deze omgeving start in een paar seconden.</p>
+  <div class="card">
+    <label for="bsn">Burgerservicenummer</label><br>
+    <select id="bsn">
+      <option>999993653</option>
+      <option>999995078</option>
+      <option>999990627</option>
+      <option>999993847</option>
+    </select>
+    <button id="vraag">Opvragen</button>
+  </div>
+  <div class="card" id="uitkomst" hidden>
+    <dl id="velden"></dl>
+  </div>
+</main>
+<script>
+const veld = (dl, k, v) => { if (!v) return; const dt = document.createElement("dt"); dt.textContent = k;
+  const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); };
+document.getElementById("vraag").onclick = async () => {
+  const dl = document.getElementById("velden"); dl.replaceChildren();
+  try {
+    const r = await fetch("/haalcentraal/api/brp/personen", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "RaadpleegMetBurgerservicenummer", burgerservicenummer: [document.getElementById("bsn").value],
+                             fields: ["naam", "geboorte", "adressering", "verblijfplaats"] }) });
+    const p = ((await r.json()).personen || [])[0];
+    if (!p) { veld(dl, "Uitkomst", "Geen persoon gevonden."); }
+    else {
+      veld(dl, "Naam", p.naam && p.naam.volledigeNaam);
+      veld(dl, "Geboren", p.geboorte && p.geboorte.datum && p.geboorte.datum.langFormaat);
+      veld(dl, "Geboorteplaats", p.geboorte && p.geboorte.plaats && p.geboorte.plaats.omschrijving);
+      const a = p.adressering || {};
+      veld(dl, "Aanhef", a.aanhef);
+      veld(dl, "Adres", [a.adresregel1, a.adresregel2, a.adresregel3].filter(Boolean).join(", "));
+    }
+  } catch (e) { veld(dl, "Uitkomst", "De BRP antwoordt niet."); }
+  document.getElementById("uitkomst").hidden = false;
+};
+</script>
+</body>
+</html>
