@@ -4,7 +4,6 @@
 # USB-SSD). See lib/run-driver.sh.
 #
 # SPDX-License-Identifier: EUPL-1.2
-PROJECT="dossiq-demo"
 STEP_NAMES=(source pull apps up ready enable seed)
 STEP_LABELS=("Nextcloud Common Ground ophalen (de demo van Conduction)" "Onderdelen downloaden"
              "De apps van Conduction downloaden en controleren" "Nextcloud starten"

@@ -3,6 +3,7 @@
   "version": "Nextcloud 34.0.5 met Dossiq 0.4.0 (demo)",
   "summary": "Common Ground in een doos: Nextcloud met de apps van Conduction voor registers, zaakgericht werken, klantcontact en een publieksportaal, gevuld met demozaken.",
   "url": "http://localhost:8609/apps/dossiq/",
+  "project": "dossiq-demo",
   "login": "launcher / launcher (of admin / admin)",
   "license": "EUPL-1.2",
   "standards": [

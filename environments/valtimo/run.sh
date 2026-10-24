@@ -4,7 +4,6 @@
 # on the DAWO USB-SSD). See lib/run-driver.sh.
 #
 # SPDX-License-Identifier: EUPL-1.2
-PROJECT="gzac-docker-compose"
 STEP_NAMES=(source pull up ready)
 STEP_LABELS=("Valtimo ophalen (de officiële demo)" "Onderdelen downloaden" "Valtimo starten"
              "Wachten tot Valtimo, Open Zaak en het burgerformulier klaar zijn")

@@ -1,13 +1,14 @@
 # Launch: what every environment's run.sh shares. A run.sh sets
 #
-#   PROJECT    the compose project its containers carry (for stop)
 #   STEP_NAMES the driver's phases, in order (deploy.sh --phase <name>)
 #   STEP_LABELS what the Launcher shows per phase (Dutch)
 #   STEP_EXPECT the typical seconds per phase (for the time left)
 #   prepare()  exports the driver's inputs (its pins, state dir, override)
 #
-# and then sources this file with "$@". It runs on Windows (Git for Windows'
-# bash with Docker Desktop or Rancher Desktop) and on Linux.
+# and then sources this file with "$@". The compose project its containers
+# carry (for stop, and for the Launcher's "klaar") is environment.json's
+# "project". It runs on Windows (Git for Windows' bash with Docker Desktop or
+# Rancher Desktop) and on Linux.
 #
 #   run.sh start <progress-file>   the phases one by one, with a progress file
 #   run.sh stop                    stop the environment's containers
@@ -18,6 +19,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
 py="${LAUNCH_PYTHON:-python3}"
 # cfg EXPR: a value from this environment's environment.json (e = the object).
 cfg() { "${py}" -c "import json,sys; e=json.load(open(sys.argv[1], encoding='utf-8')); print($1)" "${here}/environment.json"; }
+PROJECT="$(cfg "e['project']")"
 
 state="${LAUNCH_STATE:-${HOME}/.local/state/launch}"
 # In Windows form (C:/Users/...): bash and Docker both take it, and Git Bash

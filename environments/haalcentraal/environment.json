@@ -3,6 +3,7 @@
   "version": "BRP personen-mock 2.7.0 (test)",
   "summary": "Persoonsgegevens opvragen bij de BRP, met fictieve testpersonen: de testversie van de API van de RvIG. Start in een paar seconden.",
   "url": "http://localhost:18795/",
+  "project": "haalcentraal",
   "health": {
     "url": "http://localhost:18795/"
   },
