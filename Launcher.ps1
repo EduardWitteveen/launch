@@ -1,12 +1,12 @@
 ﻿# Launch: open the Launcher. Starts Docker when it does not run yet, starts the
-# Launcher (launcher\launcher.py on http://localhost:8790/) when it does not
+# Launcher (launcher\launcher.py on http://localhost:1900/) when it does not
 # run yet, and opens it in the browser. The Start menu and desktop shortcut
 # made by the installer run this.
 #
 # SPDX-License-Identifier: EUPL-1.2
 $ErrorActionPreference = "Continue"
 $root = $PSScriptRoot
-$port = 8790
+$port = 1900
 $url = "http://localhost:$port/"
 $state = Join-Path $env:LOCALAPPDATA "launch"
 New-Item -ItemType Directory -Force $state | Out-Null

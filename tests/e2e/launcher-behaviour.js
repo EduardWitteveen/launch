@@ -10,7 +10,7 @@
 const { chromium } = require("playwright-core");
 const fs = require("fs");
 const stateDir = process.argv[2];
-const URL = process.argv[3] || "http://localhost:18790/";
+const URL = process.argv[3] || "http://localhost:1900/";
 const results = [];
 const check = (ok, what) => { results.push(`${ok ? "OK  " : "FOUT"} ${what}`); console.log(results[results.length - 1]); };
 

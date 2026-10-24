@@ -19,7 +19,7 @@ Launch is een **experimenteel en onofficieel** project. Het is geen product van 
    - Launch zelf in `%LOCALAPPDATA%\Programs\Launch`;
    - een snelkoppeling **Launcher** in het Startmenu en op het bureaublad;
    - de hostnaam `identity` in het hosts-bestand. Die is nodig om in te loggen bij Tezza. Windows vraagt hiervoor één keer om beheerdersrechten.
-4. Daarna gaat de Launcher open in je browser: <http://localhost:8790/>.
+4. Daarna gaat de Launcher open in je browser: <http://localhost:1900/>.
 
 Is er net Git, Python of Rancher Desktop bijgekomen en doet de Launcher niets? Herstart dan de computer en open **Launcher** opnieuw.
 
@@ -54,7 +54,7 @@ Is er net Git, Python of Rancher Desktop bijgekomen en doet de Launcher niets? H
 - `launcher/` is the Launcher: `launcher.py` (a small HTTP server on 127.0.0.1) and `launcher.html`. Its behaviour is specified in dawo-appliance's `docs/launcher-behaviour.md`.
 - An environment is a directory under `environments/` with `environment.json` (what the card shows, `health`, `needs`) and `run.sh start <progress-file> | stop`, run with Git for Windows' bash. Every image is pinned by digest and every source by commit.
 - State lives in `%LOCALAPPDATA%\launch` (or `LAUNCH_STATE`).
-- Browser test: `cd tests/e2e && npm install && node launcher-behaviour.js "%LOCALAPPDATA%/launch" http://localhost:8790/` (uses Chrome via playwright-core, and starts Haal Centraal for real).
+- Browser test: `cd tests/e2e && npm install && node launcher-behaviour.js "%LOCALAPPDATA%/launch" http://localhost:1900/` (uses Chrome via playwright-core, and starts Haal Centraal for real).
 
 ## Licentie
 

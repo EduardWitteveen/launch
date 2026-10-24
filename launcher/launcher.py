@@ -5,7 +5,7 @@ page on 127.0.0.1 with a card per environment of the catalogue and runs the
 `launch` command for the buttons. Nothing in here is specific to one
 workplace.
 
-  launcher.py [--port 8790] [--launch launch] [--page launcher.html]
+  launcher.py [--port 1900] [--launch launch] [--page launcher.html]
               [--auto-start ID | --auto-start-cycle] [--auto-start-delay 60]
               [--cycle-file FILE [--cycle-hold 300] [--cycle-gap 60]
                [--cycle-ready-timeout 5400] [--cycle-report FILE]
@@ -492,7 +492,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 def main():
     global OPTS, LAUNCH_CMD
     ap = argparse.ArgumentParser(description="The Launcher (ADR 0008)")
-    ap.add_argument("--port", type=int, default=8790)
+    ap.add_argument("--port", type=int, default=1900)  # 1900: the municipality code of Súdwest-Fryslân
     here = os.path.dirname(os.path.abspath(__file__))
     # Without --launch: this repository's launch.py, with this Python.
     ap.add_argument("--launch", default=None)
