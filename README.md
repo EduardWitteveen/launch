@@ -36,7 +36,7 @@ Is er net Git, Python of Rancher Desktop bijgekomen en doet de Launcher niets? H
 - Er draait één omgeving tegelijk. Zolang er een actief is, zijn de andere grijs.
 - **Rondgang**: de Launcher start alle omgevingen om de beurt, laat ze een tijdje aan staan en gaat door naar de volgende. Zo zie je zonder op te letten of alles nog werkt. Je zet hem uit met *Rondgang stoppen*.
 
-**Tezza:** log in met `launcher` / `launcher`. Dat is een demo-gebruiker met dezelfde groepen als de beheerder.
+**Tezza:** log in met `launcher` / `launcher`. Dat is een demo-gebruiker met dezelfde groepen als de beheerder. Er staan vijf fictieve demozaken klaar, bij de zaaktypes Omgevingsvergunning, Evenementenvergunning en Bezwaarschrift van Súdwest-Fryslân, met een status, een aanvrager (testpersonen uit Haal Centraal) en documenten.
 ## Wat je computer nodig heeft
 
 - Windows 10 of 11, 64-bit, met beheerdersrechten voor de installatie.

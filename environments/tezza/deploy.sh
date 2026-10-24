@@ -9,7 +9,7 @@
 # (hosts/appliance/live-tezza.nix). Every phase is idempotent. Nothing of Tezza
 # is in the image: everything is downloaded from Contezza when it starts.
 #
-#   deploy.sh --phase <name>    park | docker | source | pull | up | ready | catalog | setup
+#   deploy.sh --phase <name>    park | docker | source | pull | up | ready | catalog | setup | demo
 #   deploy.sh --stop            stop the containers (the other environment)
 #   deploy.sh --dry-run --phase <name>   print what would run
 #
@@ -455,6 +455,22 @@ PY
   info "login launcher / launcher (Tezza, Share, Admin Tools, Keycloak console, Open Zaak)"
 }
 
+# Demo data (demo.py): a few made-up cases of Súdwest-Fryslân's case types,
+# with a status, an applicant and documents, so there is something to try
+# besides the configuration. Once (demo.done); should any of it fail, Tezza
+# works without them and the next start tries again.
+phase_demo() {
+  log "Demo data: made-up cases of Súdwest-Fryslân's case types"
+  if [[ "${DRY_RUN}" -eq 1 ]]; then echo "DRY-RUN: python3 demo.py"; return 0; fi
+  if [[ -f "${STATE_DIR}/demo.done" ]]; then info "made before"; return 0; fi
+  if python3 "${STATE_DIR}/demo.py"; then
+    touch "${STATE_DIR}/demo.done"
+    info "demo cases made"
+  else
+    info "not every demo case could be made; Tezza works without them"
+  fi
+}
+
 # The other environment starts: stop the containers (they keep their data).
 do_stop() {
   log "stop the Tezza containers"
@@ -475,5 +491,6 @@ case "${PHASE}" in
   ready) phase_ready ;;
   catalog) phase_catalog ;;
   setup) phase_setup ;;
-  *) die "unknown or missing --phase (park, docker, source, pull, up, ready, setup)" ;;
+  demo) phase_demo ;;
+  *) die "unknown or missing --phase (park, docker, source, pull, up, ready, catalog, setup, demo)" ;;
 esac
