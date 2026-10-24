@@ -3,6 +3,7 @@
   "version": "Tezza 4.15.2 (demo)",
   "summary": "Documenten en archief beheren: dossiers, documenttypen en metadata, op Alfresco.",
   "url": "http://localhost:8082/",
+  "project": "tezza-packaging",
   "login": "launcher / launcher (of admin / admin)",
   "links": [
     {

@@ -24,11 +24,13 @@ SPDX-License-Identifier: EUPL-1.2
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -209,9 +211,40 @@ def progress_of(eid):
         return None
 
 
+_CONTAINERS = None
+
+
+def containers():
+    """The running containers: [(name, compose project, host ports)], once per command."""
+    global _CONTAINERS
+    if _CONTAINERS is None:
+        _CONTAINERS = []
+        try:
+            out = subprocess.run(["docker", "ps", "--format",
+                                  '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Ports}}'],
+                                 capture_output=True, text=True, timeout=30, creationflags=NO_WINDOW)
+            for line in out.stdout.splitlines() if out.returncode == 0 else []:
+                name, project, ports = (line.split("\t") + ["", ""])[:3]
+                published = set()
+                for a, b in re.findall(r":(\d+)(?:-(\d+))?->", ports):
+                    published.update(range(int(a), int(b or a) + 1))
+                _CONTAINERS.append((name, project, published))
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    return _CONTAINERS
+
+
+def own_up(env):
+    """Whether the environment answers, and (with a "project") with its own containers:
+    something else on its port (another program, another project) is not it."""
+    up = answers((env.get("health") or {}).get("url") or env["url"])
+    project = env.get("project")
+    return up and (not project or any(p == project for _, p, _ in containers()))
+
+
 def status_of(env):
     eid = env["id"]
-    up = answers((env.get("health") or {}).get("url") or env["url"])
+    up = own_up(env)
     if running_pid(eid):
         return {"id": eid, "url": env["url"], "state": "starting", "answers": up, "progress": progress_of(eid)}
     if os.path.exists(paths(eid)["failed"]):
@@ -243,7 +276,47 @@ def check(env):
         if mem + 0.5 < need:
             problems.append(f"Docker heeft {mem:.0f} GB geheugen; {env['title']} heeft er ongeveer {need} nodig "
                             "(zie de README: het geheugen van Docker vergroten).")
-    return problems + [c["problem"] for c in failing_checks(env)]
+    return problems + busy_ports(env) + [c["problem"] for c in failing_checks(env)]
+
+
+def ports_of(env):
+    """The ports on this computer the environment's addresses use (its url, health,
+    links on localhost) and needs.ports."""
+    ports = set((env.get("needs") or {}).get("ports", []))
+    for url in [env.get("url"), (env.get("health") or {}).get("url")] + [l.get("url") for l in env.get("links", [])]:
+        u = urllib.parse.urlsplit(url or "")
+        if u.hostname in ("localhost", "127.0.0.1"):
+            ports.add(u.port or (443 if u.scheme == "https" else 80))
+    return sorted(ports)
+
+
+def busy_ports(env):
+    """A problem per program that holds a port the environment needs. Launch's own
+    environments do not count: a start stops the others first."""
+    import socket
+    ours = {e.get("project") for e in catalog() if e.get("project")}
+    holders = {}
+    for port in ports_of(env):
+        with socket.socket() as s:
+            s.settimeout(0.5)
+            if s.connect_ex(("127.0.0.1", port)) != 0:
+                continue  # free
+        held = [(n, p) for n, p, published in containers() if port in published]
+        if held and all(p in ours for _, p in held):
+            continue
+        holders.setdefault(held[0][0] if held else "", []).append(port)
+    problems = []
+    for name, ports in holders.items():
+        which = ("Poort " if len(ports) == 1 else "De poorten ") + ", ".join(map(str, ports))
+        if name:
+            problems.append(f"{which} {'is' if len(ports) == 1 else 'zijn'} bezet door de container '{name}', "
+                            f"die niet bij Launch hoort; {env['title']} heeft {'die' if len(ports) == 1 else 'ze'} "
+                            f"nodig. Stop die container eerst (bijvoorbeeld: docker stop {name}).")
+        else:
+            problems.append(f"{which} {'is' if len(ports) == 1 else 'zijn'} bezet door een ander programma op deze "
+                            f"computer; {env['title']} heeft {'die' if len(ports) == 1 else 'ze'} nodig. "
+                            "Sluit dat programma eerst.")
+    return problems
 
 
 # --- known problems and their fixes ---------------------------------------------

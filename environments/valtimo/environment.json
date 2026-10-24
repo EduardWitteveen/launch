@@ -3,6 +3,7 @@
   "version": "GZAC 13.4.1 (demo)",
   "summary": "Zaakgericht werken: een aanvraag evenementenvergunning behandelen, stap voor stap, zoals een gemeente dat doet.",
   "url": "http://localhost/",
+  "project": "gzac-docker-compose",
   "login": "launcher / launcher (of admin / admin)",
   "links": [
     {

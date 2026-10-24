@@ -4,7 +4,6 @@
 # same as on the DAWO USB-SSD). See lib/run-driver.sh.
 #
 # SPDX-License-Identifier: EUPL-1.2
-PROJECT="tezza-packaging"
 STEP_NAMES=(source pull up ready catalog setup demo)
 STEP_LABELS=("Tezza ophalen (de demo van Contezza)" "Onderdelen downloaden (ongeveer 8 GB)" "Tezza starten"
              "Wachten tot Tezza klaar is (de eerste keer wordt alles ingericht)" "De zaaktypes van Súdwest-Fryslân laden"
