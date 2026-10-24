@@ -20,7 +20,9 @@ py="${LAUNCH_PYTHON:-python3}"
 cfg() { "${py}" -c "import json,sys; e=json.load(open(sys.argv[1], encoding='utf-8')); print($1)" "${here}/environment.json"; }
 
 state="${LAUNCH_STATE:-${HOME}/.local/state/launch}"
-command -v cygpath >/dev/null 2>&1 && state="$(cygpath -u "${state}")"
+# In Windows form (C:/Users/...): bash and Docker both take it, and Git Bash
+# leaves it alone, also inside "-v <dir>:/dl:ro" (a /c/... path there broke).
+command -v cygpath >/dev/null 2>&1 && state="$(cygpath -m "${state}")"
 STATE_DIR="${state}/$(basename "${here}")"
 mkdir -p "${STATE_DIR}"
 # The drivers take the docker binary from <dir>/bin and the connection as -H:
@@ -29,8 +31,9 @@ docker_bin="$(command -v docker || true)"
 [[ -n "${docker_bin}" ]] || { echo "Docker is niet gevonden. Installeer Docker Desktop of Rancher Desktop." >&2; exit 1; }
 export DAWO_DOCKER_DIR="$(dirname "$(dirname "${docker_bin}")")"
 export DAWO_DOCKER_SOCK="$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null)"
-# Git Bash would turn the containers' /tmp/... and /opt/... into Windows paths.
-export MSYS2_ARG_CONV_EXCL="/tmp/;/opt/"
+# Git Bash would turn paths inside the containers (/tmp/..., /bin/sh, ...) into
+# Windows paths; this computer's own paths start with /c/ and still convert.
+export MSYS2_ARG_CONV_EXCL="/tmp/;/opt/;/bin/;/usr/;/var/;/etc/;/run/"
 # Git for Windows checks files out with CRLF (core.autocrlf): a container's
 # shell script then fails with "cannot execute: required file not found"
 # (Open Formulieren's database init in Valtimo). Upstream's files as they are.
