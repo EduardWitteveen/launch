@@ -11,12 +11,16 @@
     --bg: #f4f6f8; --card: #ffffff; --text: #1d2733; --muted: #5b6875;
     --line: #dde3ea; --accent: #1f5fbf; --accent-text: #ffffff;
     --ok: #1b7f3b; --busy: #a86200; --warn-bg: #fff6e5; --warn: #7a4a00;
+    --bad-bg: #fdecea; --bad: #8e0000; --ok-bg: #e8f5ec;
+    --veil: rgba(244, 246, 248, .72);
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #12171d; --card: #1b222b; --text: #e6ebf0; --muted: #9aa7b4;
       --line: #2c3743; --accent: #6aa5ff; --accent-text: #0d1117;
       --ok: #5fd08a; --busy: #f0b35a; --warn-bg: #2d2416; --warn: #f0c27a;
+      --bad-bg: #3a1c1c; --bad: #ffb4ab; --ok-bg: #16301f;
+      --veil: rgba(18, 23, 29, .72);
     }
   }
   * { box-sizing: border-box; }
@@ -27,9 +31,27 @@
   .lead { color: var(--muted); margin: 0 0 28px; }
   .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
   .card.blocked, .cycle.blocked { opacity: .5; }
-  .offline { max-width: 1060px; margin: 12px auto 0; padding: 8px 12px; border-radius: 8px; background: #fff3cd; color: #5c4400; }
-  .round-note { font-size: .9rem; color: var(--muted); margin: 6px 0; }
-  .blocked-note { font-size: .9rem; color: var(--muted); margin: 6px 0; }
+  /* GEEN LAUNCHER (§3.12): a yellow bar, the rest grey and without buttons. */
+  .offline { position: sticky; top: 0; z-index: 20; margin: 0; padding: 10px 20px; text-align: center;
+             background: #fff3cd; color: #5c4400; font-weight: 600; }
+  body.dead main { opacity: .5; }
+  body.dead main button, body.dead main .auto button { display: none; }
+  body.dead main a { pointer-events: none; }
+  /* What went wrong with a click (rule 7), and T1. */
+  .topmsg { background: var(--bad-bg); color: var(--bad); border-radius: 10px; padding: 10px 14px;
+            margin: 0 0 20px; display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+  .topmsg button { font-size: .85rem; padding: 4px 10px; color: inherit; border-color: currentColor; }
+  .twoactive { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 10px 14px;
+               margin: 0 0 20px; font-weight: 600; }
+  /* Rule 7: after a click the page greys, with what happens in the middle. */
+  .overlay { position: fixed; inset: 0; z-index: 10; background: var(--veil); display: grid; place-items: center; }
+  .overlay[hidden], .offline[hidden] { display: none; }
+  .overlay p { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 22px;
+               font-weight: 600; box-shadow: 0 6px 24px rgba(0,0,0,.12); display: flex; gap: 10px; align-items: center; margin: 0 16px; }
+  .spin { width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent);
+          animation: spin 1s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .round-note { font-size: .9rem; color: var(--muted); margin: 0; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
           padding: 20px; display: flex; flex-direction: column; gap: 12px; }
   .head { display: flex; gap: 14px; align-items: center; }
@@ -39,26 +61,46 @@
   .title { font-weight: 650; font-size: 1.15rem; margin: 0; }
   .version { color: var(--muted); font-size: .85rem; }
   .summary { margin: 0; color: var(--text); }
-  .state { font-size: .9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .state { font-size: .95rem; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
   .state.ready .dot { background: var(--ok); }
-  .state.starting .dot { background: var(--busy); animation: pulse 1.2s infinite; }
-  .state.failed .dot { background: #c62828; }
-  .failed-text { font-size: .9rem; margin: 6px 0; }
+  .state.starting .dot, .state.busy .dot { background: var(--busy); animation: pulse 1.2s infinite; }
+  .state.failed .dot, .state.problem .dot { background: #c62828; }
+  .state.attention .dot { background: #d9a400; }
   @keyframes pulse { 50% { opacity: .3; } }
+  .text { margin: 0; font-size: .95rem; }
+  .muted { color: var(--muted); font-size: .9rem; margin: 0; }
   .warn { background: var(--warn-bg); color: var(--warn); border-radius: 8px;
           padding: 10px 12px; font-size: .9rem; }
-  .warn ul { margin: 6px 0 0; padding-left: 18px; }
+  .warn p { margin: 0; }
+  .warn p + p { margin-top: 6px; }
+  .bad { background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 10px 12px; font-size: .9rem; }
+  .bad p { margin: 0; }
+  .bad p + p { margin-top: 6px; }
+  .note { font-size: .9rem; font-weight: 600; margin: 0; }
+  .note.good { color: var(--ok); }
+  .note.bad-note { color: var(--bad); }
+  .fixbox { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: .9rem; }
+  .fixbox p { margin: 0; }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
   button, a.button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 16px;
           border: 1px solid var(--line); background: transparent; color: var(--text);
-          cursor: pointer; text-decoration: none; }
+          cursor: pointer; text-decoration: none; display: inline-block; }
   button.primary, a.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   button:disabled { opacity: .5; cursor: default; }
-  button:focus-visible, a.button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-  .login { color: var(--muted); font-size: .85rem; }
-  .message { color: var(--muted); font-size: .85rem; min-height: 1.2em; }
+  button:focus-visible, a.button:focus-visible, .parts a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   footer { margin-top: 32px; color: var(--muted); font-size: .85rem; }
+  /* The parts of a running environment (3B): the main one on top. */
+  .parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: .9rem; }
+  .parts li { display: flex; flex-direction: column; }
+  .parts li.main a { align-self: flex-start; }
+  .parts a { color: var(--accent); font-weight: 600; }
+  .parts a.primary { color: var(--accent-text); }
+  .parts .plogin { color: var(--muted); font-size: .85rem; }
+  .parts-head { font-size: .9rem; font-weight: 600; margin: 0 0 6px; }
+  .log summary { cursor: pointer; color: var(--accent); font-size: .9rem; }
+  .log pre { margin: 6px 0 0; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+             font-size: .75rem; line-height: 1.4; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
   /* Progress while an environment starts (#232): the whole start on top,
      the current step below. */
   .progress { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; }
@@ -74,28 +116,31 @@
   .plabel { font-weight: 600; margin-top: 4px; }
   .ptime { color: var(--muted); font-size: .85rem; }
   .peta { color: var(--muted); font-size: .85rem; }
+  .pdetail { color: var(--muted); font-size: .8rem; font-style: italic; overflow-wrap: anywhere; }
   .auto { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--warn-bg);
           color: var(--warn); border-radius: 8px; padding: 10px 12px; font-weight: 600; }
   .auto button { font-size: .85rem; padding: 6px 12px; }
   .cycle { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px;
            margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; font-size: .95rem; }
   .cycle.active { border-color: var(--accent); }
-  .notice { border: 1px solid #d9a400; background: #fff8e0; color: #3d3000; border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
-  .notice.danger, .warn.danger { border: 2px solid #c62828; background: #fdecea; color: #8e0000; }
-  .notice.danger b, .warn.danger { color: #b71c1c; font-weight: 700; }
-  .warn .actions { margin-top: 8px; }
-  .notice-text { white-space: pre-wrap; font-size: .9rem; margin: 6px 0; }
-  .links { font-size: .9rem; margin: 6px 0; }
-  .links summary { cursor: pointer; color: var(--accent); }
-  .links ul { margin: 6px 0 0; padding-left: 18px; }
-  .linklogin { color: var(--muted); }
-  .licences { font-size: .85rem; margin: 4px 0; }
+  .cycle-last { margin: 0; padding-left: 18px; color: var(--muted); font-size: .85rem; }
+  .notice { border: 1px solid #d9a400; background: #fff8e0; color: #3d3000; border-radius: 10px; padding: 10px 12px; }
+  .notice.danger { border: 2px solid #c62828; background: #fdecea; color: #8e0000; }
+  .notice.danger b { color: #b71c1c; }
+  .notice-text { white-space: pre-wrap; font-size: .9rem; margin: 6px 0 0; }
+  @media (prefers-color-scheme: dark) {
+    .notice { background: #2d2416; color: #f0d9a8; }
+    .notice.danger { background: #3a1c1c; color: #ffb4ab; }
+    .notice.danger b { color: #ffb4ab; }
+  }
+  .licences { font-size: .85rem; margin: 0; }
   .licences summary { cursor: pointer; }
   .licences ul { margin: 6px 0 0; padding-left: 18px; }
-  .lic-green > summary::before, .lic-yellow > summary::before, .lic-red > summary::before { content: "● "; }
-  .lic-green > summary::before { color: #2e7d32; }
-  .lic-yellow > summary::before { color: #b58900; }
-  .lic-red > summary::before { color: #c62828; }
+  .lic-green > summary::before, .lic-yellow > summary::before, .lic-red > summary::before,
+  .lic-green.folded::before, .lic-yellow.folded::before, .lic-red.folded::before { content: "● "; }
+  .lic-green > summary::before, .lic-green.folded::before { color: #2e7d32; }
+  .lic-yellow > summary::before, .lic-yellow.folded::before { color: #b58900; }
+  .lic-red > summary::before, .lic-red.folded::before { color: #c62828; }
   .lic-reason, .lic-count { margin: 6px 0; }
   .lic-sub { margin: 4px 0 0 12px; }
   .lic-sub > summary { color: var(--accent); }
@@ -105,116 +150,152 @@
   .lic-item.lic-restricted::before, .lic-item.lic-unknown::before { color: #b58900; }
   .lic-item.lic-closed::before { color: #c62828; }
   .lic-item.lic-closed { font-weight: 600; }
-  .cycle-last { margin: 0; padding-left: 18px; color: var(--muted); font-size: .85rem; }
-  .pdetail { color: var(--muted); font-size: .8rem; font-style: italic; overflow-wrap: anywhere; }
-  .perror { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 10px 12px; }
   @media (prefers-reduced-motion: reduce) {
     .bar > div { transition: none; }
     .bar.waiting > div { animation: none; width: 100% !important; opacity: .4; }
+    .spin, .state .dot { animation: none !important; }
   }
 </style>
 </head>
 <body>
-<p id="offline" class="offline" hidden>De Launcher reageert even niet; we proberen het opnieuw.</p>
+<p id="offline" class="offline" hidden></p>
 <main>
   <h1>Launcher</h1>
-  <p class="lead">Kies een omgeving om te proberen. De eerste keer duurt starten lang (alles wordt gedownload: reken op een half uur tot een uur); daarna gaat het veel sneller. Hieronder zie je steeds bij welke stap het is.</p>
+  <p class="lead">Kies een omgeving, start hem, gebruik hem en stop hem weer; de eerste keer duurt starten lang, omdat alles dan wordt gedownload.</p>
+  <div id="top"></div>
   <div id="cycle"></div>
-  <div class="grid" id="grid" aria-live="polite"><p>Even geduld…</p></div>
+  <div class="grid" id="grid" aria-live="polite"></div>
   <footer>Experimenteel en onofficieel. Er draait één omgeving tegelijk.</footer>
 </main>
+<div id="overlay" class="overlay" hidden><p><span class="spin" aria-hidden="true"></span><span id="overlay-text"></span></p></div>
 <script>
 "use strict";
+// The page draws only what the Launcher says (docs/launcher-behaviour.md,
+// rule 8): GET /api/state every 2 s, redrawn when its seq changes. No guess
+// of its own about what a click did; until the server answers, the page is
+// grey (rule 7).
 const TOKEN = "__LAUNCHER_TOKEN__";
-const STATE = { ready: "Klaar", starting: "Wordt gestart…", stopped: "Niet actief", failed: "Starten mislukt" };
-const busy = {};
-let acting = false;
-// What was just pressed (#284), shown at once until the server agrees, so
-// there is no state in between: {id, verb, from, at} for a card, and
-// {active, at} for the round.
-let INTENT = null, ROUND_INTENT = null;
-let lastAnswer = Date.now() / 1000;  // the last time the Launcher answered
+const POPUP = "popup,width=1400,height=900";
+const OPEN_KEY = "launcher-open";   // the env this tab started (contract G)
+
+let S = null;            // the last state
+let skew = 0;            // server clock minus ours, in seconds
+let lastAnswer = 0;      // when the Launcher last answered (our clock)
+const pageLoaded = Date.now() / 1000;
+let overlay = null;      // {seq, at}: grey until the seq changes
+let topMessage = "";     // what went wrong with the last click
+let topMessageAt = 0;
+
+const nowLocal = () => Date.now() / 1000;
+const serverNow = () => nowLocal() + skew;
 
 function el(tag, attrs, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
-    if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+    if (v === false || v == null) continue;
+    if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? "" : v);
   }
-  for (const c of children) if (c != null) e.append(c);
+  for (const c of children) if (c != null && c !== false) e.append(c);
   return e;
 }
 
-async function act(verb, env) {
-  // Known problems the start fixes itself (env.fixes): say first what it
-  // changes on this computer, then ask; the other problems as before.
-  const blocking = env.blocking || env.problems;
-  const fixing = (verb === "start" || verb === "fix") && (env.fixes || []).length;
-  if (fixing || (verb === "start" && blocking.length)) {
-    const parts = [];
-    if (fixing) parts.push("Launch gaat eerst iets op deze computer veranderen:\n\n- " + env.fixes.map(f => f.text).join("\n- "));
-    if (verb === "start" && blocking.length) parts.push("Let op:\n\n" + blocking.join("\n\n"));
-    if (!confirm(parts.join("\n\n") + "\n\n" + (verb === "fix" ? "Doorgaan?" : (blocking.length ? "Toch starten?" : "Doorgaan en starten?")))) return;
-  }
-  if (acting) return;
-  acting = true;  // one start or stop at a time (#257)
-  if (verb !== "cancel" && verb !== "fix") INTENT = { id: env.id, verb, from: env.state, at: Date.now() / 1000 };
-  busy[env.id] = fixing ? "Bezig met oplossen. Vraagt Windows om toestemming, klik dan op Ja (het venster kan achter de browser staan)." : "";
-  render(lastData);
+// "1 min 20 s", "7 min", "45 s"
+function dur(s) {
+  s = Math.max(0, Math.round(s));
+  if (s < 60) return s + " s";
+  const m = Math.floor(s / 60), r = s % 60;
+  return m < 10 && r ? `${m} min ${r} s` : `${Math.round(s / 60)} min`;
+}
+
+function clock(t) {
+  return new Date(t * 1000).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+}
+
+// BEGIN actions
+// Rule 7: grey at once, with what happens, until the next state is there.
+// Not possible now (409) or no answer: the page as it was, and why on top.
+async function post(path, sentence) {
+  if (overlay) return;
+  topMessage = "";
+  showOverlay(sentence);
+  let msg = "";
   try {
-    const r = await fetch(`/api/${verb}/${env.id}`, { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
-    const j = await r.json();
-    // What launch says, in its own (Dutch) words; never a program's error.
-    if (!j.ok) { INTENT = null; busy[env.id] = j.busy ? j.output : (j.output || "Dat lukte niet."); }
-    else if (fixing) busy[env.id] = "";
+    const r = await fetch(path, { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
+    let j = {};
+    try { j = await r.json(); } catch (e) { /* no JSON */ }
+    if (!r.ok || !j.ok) msg = j.message || "Dat lukte nu niet.";
   } catch (e) {
-    // No answer while it starts (the Launcher is busy): the state shows what
-    // happens; refresh() asks again and says so when it takes too long.
+    msg = "De Launcher antwoordt niet. Probeer het zo opnieuw.";
   }
-  acting = false;
-  render(lastData);
-  lastJson = "";
+  if (msg) {
+    hideOverlay();
+    topMessage = msg;
+    topMessageAt = nowLocal();
+    render();
+    return false;
+  }
   refresh();
+  return true;
 }
 
-// Cancel the automatic start (#238).
-async function cancelAuto() {
-  try {
-    await fetch("/api/autostart/cancel", { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
-  } catch (e) { /* the next refresh shows the state */ }
-  lastJson = ""; lastCycle = "";
-  refresh(); refreshCycle();
+function hideOverlay() {
+  overlay = null;
+  document.getElementById("overlay").hidden = true;
 }
 
-function autoBlock(env) {
-  return el("div", { class: "auto", "data-auto-at": env.autostart.at },
-    el("span", { class: "auto-text" }, "Start automatisch…"),
-    el("button", { onclick: cancelAuto }, "Niet automatisch starten"));
+function showOverlay(sentence) {
+  overlay = { seq: S ? S.seq : null, at: nowLocal() };
+  document.getElementById("overlay-text").textContent = sentence;
+  document.getElementById("overlay").hidden = false;
 }
 
-// The environment's notice before it starts (#261), with a countdown.
-function noticeBlock(env) {
-  const n = env.notice;
-  return el("div", { class: "notice" + (n.level === "danger" ? " danger" : ""), "data-auto-at": env.pending.at },
-    el("b", {}, n.title || "Let op"),
-    el("p", { class: "notice-text" }, n.text || ""),
-    el("span", { class: "auto-text", "data-what": "De omgeving" }, ""),
-    el("div", { class: "actions" },
-      el("button", { class: "primary", onclick: () => act("start-now", env) }, "Nu starten"),
-      el("button", { onclick: () => act("cancel", env) }, "Niet starten")));
+function act(verb, env) {
+  const t = env.title;
+  const sentence = {
+    start: `${t} wordt gecontroleerd…`,
+    retry: env.phase === "stopping" ? `${t} wordt gestopt…` : `${t} wordt opnieuw gecontroleerd…`,
+    fix: `Launch lost het op…`,
+    accept: `${t} wordt gestart…`,
+    stop: `${t} wordt gestopt…`,
+  }[verb];
+  // The tab that starts opens the main part once it is ready (contract G).
+  const starts = verb === "start" || verb === "accept" || (verb === "retry" && env.phase === "problem");
+  post(`/api/${verb}/${env.id}`, sentence).then(ok => {
+    if (!ok) return;
+    try {
+      if (starts) sessionStorage.setItem(OPEN_KEY, env.id);
+      else if (verb === "stop") sessionStorage.removeItem(OPEN_KEY);
+    } catch (e) { /* no storage: nothing opens by itself; 3B is there */ }
+  });
 }
+
+function cancelAuto() { post("/api/autostart/cancel", "Het automatisch starten wordt uitgezet…"); }
+
+function cycleAct(verb) {
+  post(`/api/cycle/${verb}`, { start: "De rondgang wordt gestart…", stop: "De rondgang wordt gestopt…" }[verb] || "Even geduld…");
+}
+
+// Every part opens in a window of its own; a click that only opens a
+// window greys nothing (rule 7).
+function openPart(url) {
+  const w = window.open(url, "_blank", POPUP);
+  if (w) { try { w.opener = null; } catch (e) { /* cross-origin */ } }
+  return w;
+}
+// END actions
 
 // BEGIN licences
 // Licences per repository (#273). Closed, one quiet line with the colour as a
 // dot (the maintainer's review of 23 October: the red text shouted, was too
 // long, and named the colour twice). Opened: why, the count, and two lists
 // that open on their own: the parts (not clearly open source first) and the
-// licences used.
+// licences used. Only when not everything is open source (1C3, rule 3).
 const LIC_CLASS = { closed: "gesloten", restricted: "beperkte licentie", unknown: "geen licentie gevonden", open: "open source" };
 const LIC_ORDER = { closed: 0, restricted: 1, unknown: 2, open: 3 };
 const LIC_TITLE = { green: "Alles open source", yellow: "Onduidelijke licenties", red: "Niet alles open source" };
 function licencesBlock(env) {
   const l = env.licences;
-  if (!l || !l.total) return null;
+  if (!l || !l.total || l.level === "green") return null;
   // The count per licence: a choice counts as its first, "-only" and
   // "-or-later" together (the list has the full expression).
   const short = {};
@@ -242,123 +323,6 @@ function licencesBlock(env) {
     used.length ? el("details", { class: "lic-sub" }, el("summary", {}, `Gebruikte licenties (${used.length})`), el("ul", {}, ...used)) : null);
 }
 // END licences
-// The data as the page shows it: what was just pressed applied, until the
-// server agrees (or after two minutes).
-function view(data) {
-  const now = Date.now() / 1000;
-  if (INTENT && now - INTENT.at > 120) INTENT = null;
-  return data.map(e => {
-    if (!INTENT || INTENT.id !== e.id) return e;
-    if (INTENT.verb === "stop") {
-      if (e.state !== "stopped") return { ...e, stopping: true };
-    } else if (e.state === INTENT.from && !e.pending) {
-      return { ...e, state: "starting", progress: null };
-    }
-    INTENT = null;
-    return e;
-  });
-}
-
-// BEGIN active environment
-// One environment at a time (ADR 0008, #284): the one that is not stopped,
-// or waits for its notice. While it is there the other cards are greyed out
-// and cannot be started; it has to be stopped first.
-// The round (rondgang) the same way: while it runs, it alone is in charge
-// and only "Rondgang stoppen" can be pressed (every card is greyed out, also
-// the one it is at); while an environment runs, the round cannot be started.
-function activeEnv(data) {
-  return data.find(e => e.state !== "stopped" || e.pending) || null;
-}
-// END active environment
-let ROUND_ACTIVE = false;   // from /api/cycle
-let ACTIVE_ENV = null;      // from /api/environments
-
-function card(env, active) {
-  const actions = el("div", { class: "actions" });
-  const round = ROUND_ACTIVE;
-  const isActive = !!active && active.id === env.id;
-  // Greyed out: every card but the active one. Openen is no control, so the
-  // active environment opens when it is ready, also while the round runs.
-  const blocked = !!active ? !isActive : round;
-  if (env.stopping) {
-    // being stopped: nothing to press until it is
-  } else if (round) {
-    // the round's own button stops it; only Openen
-    if (env.state === "ready") actions.append(el("a", { class: "button primary", href: env.url, target: "_blank", rel: "noopener" }, "Openen"));
-  } else if (env.pending) {
-    // the notice block carries the buttons
-  } else if (env.state === "stopped") {
-    actions.append(el("button", { class: "primary", onclick: () => act("start", env), ...(acting || blocked ? { disabled: "" } : {}) }, "Starten"));
-  } else if (env.state === "failed") {
-    // A failed start (#282): try again or stop it; what answers opens from
-    // a link in the text (two buttons fit on one line).
-    actions.append(el("button", { class: "primary", onclick: () => act("start", env), ...(acting ? { disabled: "" } : {}) }, "Opnieuw proberen"));
-    actions.append(el("button", { onclick: () => act("stop", env), ...(acting ? { disabled: "" } : {}) }, "Stoppen"));
-  } else {
-    if (env.state === "ready") {
-      actions.append(el("a", { class: "button primary", href: env.url, target: "_blank", rel: "noopener" }, "Openen"));
-    }
-    actions.append(el("button", { onclick: () => act("stop", env), ...(acting ? { disabled: "" } : {}) }, "Stoppen"));
-  }
-  const warn = env.state === "stopped" && env.problems.length
-    ? el("div", { class: "warn" }, "Let op:", el("ul", {}, ...env.problems.map(p => el("li", {}, p))),
-        (env.fixes || []).length && !round
-          ? el("div", { class: "actions" }, el("button", { onclick: () => act("fix", env),
-              ...(acting || blocked ? { disabled: "" } : {}) }, "Nu oplossen")) : null)
-    : null;
-  const section = el("section", { class: blocked ? "card blocked" : "card", "aria-label": env.title },
-    el("div", { class: "head" },
-      el("div", { class: "logo", "aria-hidden": "true" }, env.title.charAt(0)),
-      el("div", {}, el("p", { class: "title" }, env.title), el("span", { class: "version" }, env.version))),
-    el("p", { class: "summary" }, env.summary),
-    licencesBlock(env),
-    el("div", { class: "state " + (env.stopping ? "starting" : env.state) }, el("span", { class: "dot" }),
-       env.stopping ? "Wordt gestopt…" : (STATE[env.state] || env.state)),
-    env.state === "starting" && !env.stopping ? progressBlock(env) : null,
-    env.state === "failed" && !env.pending
-      ? el("p", { class: "failed-text" }, ((env.progress || {}).error || "Het starten is niet gelukt.") + " ",
-          env.answers ? el("a", { href: env.url, target: "_blank", rel: "noopener" }, "Openen wat wel werkt") : null) : null,
-    env.state === "stopped" && env.autostart ? autoBlock(env) : null,
-    env.pending && env.notice ? noticeBlock(env) : null,
-    env.state === "stopped" && !env.pending && env.notice
-      ? el("div", { class: env.notice.level === "danger" ? "warn danger" : "warn" }, env.notice.title || "Let op") : null,
-    warn,
-    env.state === "ready" && env.login ? el("div", { class: "login" }, "Inloggen: " + env.login) : null,
-    env.state === "ready" && env.links && env.links.length
-      ? el("details", { class: "links" }, el("summary", {}, "Ook in deze omgeving"),
-          el("ul", {}, ...env.links.map(l => el("li", {},
-            el("a", { href: l.url, target: "_blank", rel: "noopener" }, l.title),
-            l.login ? el("span", { class: "linklogin" }, " · " + l.login) : null))))
-      : null,
-    round && isActive ? el("p", { class: "round-note" }, "Gestart door de rondgang.") : null,
-    el("div", { class: "message" }, busy[env.id] || ""),
-    actions);
-  return blocked ? inert(section, env, round) : section;
-}
-
-// Grey means inert (#284): what the card is, nothing to do with it. Lists
-// that unfold become a plain line, links plain text, buttons go; one
-// exception: a second environment that runs anyway keeps its Stoppen.
-function inert(section, env, round) {
-  for (const d of [...section.querySelectorAll("details")]) {
-    const s = d.querySelector("summary");
-    d.replaceWith(el("p", { class: d.className + " folded" }, s ? s.textContent : ""));
-  }
-  for (const a of [...section.querySelectorAll("a")]) a.replaceWith(a.textContent);
-  const keepStop = !round && env.state !== "stopped";
-  for (const b of [...section.querySelectorAll("button")]) {
-    if (!(keepStop && b.textContent === "Stoppen")) b.remove();
-  }
-  return section;
-}
-
-// "1 min 20 s", "7 min", "45 s"
-function dur(s) {
-  s = Math.max(0, Math.round(s));
-  if (s < 60) return s + " s";
-  const m = Math.floor(s / 60), r = s % 60;
-  return m < 10 && r ? `${m} min ${r} s` : `${Math.round(s / 60)} min`;
-}
 
 // The progress an environment reports while it starts (#232): a bar for the
 // whole start and one for the current step. Before the environment reports
@@ -382,19 +346,14 @@ function progressBlock(env) {
     el("div", { class: "bar step" + (p.expected ? "" : " waiting"), role: "progressbar", "aria-label": "Voortgang van deze stap" }, el("div", {})),
     el("div", { class: "ptime" }, ""),
     el("div", { class: "pdetail" }, ""));
-  if (p.error) box.append(el("div", { class: "perror" }, p.error));
   setDetail(box, p);
   return box;
 }
 
-// What the environment does right now (#235), updated in place.
+// What the environment does right now (#235, 2E), updated in place.
 function setDetail(box, p) {
   box.dataset.activity = p.activity || "";
   box.querySelector(".pdetail").textContent = p.detail ? "Nu: " + p.detail : "";
-}
-
-function clock(t) {
-  return new Date(t * 1000).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 }
 
 // BEGIN progress texts
@@ -416,16 +375,265 @@ function progressTexts(elapsed, exp, rest, now) {
 }
 // END progress texts
 
+// The parts (3B): the main one first, then the links, each with its login.
+function partsList(parts, head) {
+  if (!parts || !parts.length) return null;
+  const list = el("ul", { class: "parts" }, ...parts.map((p, i) => el("li", { class: i === 0 && !head ? "main" : null },
+    el("a", { href: p.url, target: "_blank", class: i === 0 && !head ? "button primary" : null,
+              onclick: ev => { ev.preventDefault(); openPart(p.url); } },
+      i === 0 && !head ? `${p.title} openen` : p.title),
+    p.login ? el("span", { class: "plogin" }, "Inloggen: " + p.login) : null)));
+  return head ? el("div", {}, el("p", { class: "parts-head" }, head), list) : list;
+}
+const mainParts = env => [{ title: env.title, url: env.url, login: env.login }, ...(env.links || [])];
+
+// The state line on the card: what phase it is in.
+function stateLine(cls, text) {
+  return el("div", { class: "state " + cls }, el("span", { class: "dot" }), text);
+}
+
+function failedText(env) {
+  const e = env.error || "De start is afgebroken.";
+  const p = env.progress;
+  if (p && p.step && p.steps && !/^Bij stap /.test(e)) {
+    return `Bij stap ${p.step} van ${p.steps}${p.label ? ` (${p.label})` : ""}: ${e}`;
+  }
+  return e;
+}
+
+function autoBlock(at, what) {
+  return el("div", { class: "auto", "data-auto-at": at },
+    el("span", { class: "auto-text", "data-what": what || "" }, ""),
+    el("button", { onclick: cancelAuto }, "Niet automatisch starten"));
+}
+
+// One card. mode: "free" (nothing else active), "active" (this one runs),
+// "grey" (another one runs: inert), "round" (the round is here: its phase,
+// no buttons), "two" (two run: only Stoppen).
+function card(env, mode) {
+  const kids = [];
+  const buttons = [];
+  const btn = (text, verb, primary, disabled) =>
+    buttons.push(el("button", { class: primary ? "primary" : null, disabled: !!disabled, onclick: () => act(verb, env) }, text));
+  const ph = env.phase;
+  const now = serverNow();
+
+  if (ph === "unknown") {
+    kids.push(stateLine("busy", "Even geduld…"));
+  } else if (ph === "stopped") {
+    // OVERZICHT (1C): only what is not in order is shown (rule 3).
+    if (env.precondition) {
+      kids.push(el("div", { class: "warn" }, el("p", {}, el("b", {}, "Kan niet draaien op deze computer.")), el("p", {}, env.precondition)));
+    }
+    if (env.ended) kids.push(el("div", { class: "warn" }, el("p", {}, env.ended.text)));
+    if (env.autostart && !env.precondition) kids.push(autoBlock(env.autostart.at));
+    btn("Starten", "start", true, !!env.precondition);
+  } else if (ph === "checking") {
+    kids.push(stateLine("busy", "Bezig met controleren…"));
+    btn("Stoppen", "stop");
+  } else if (ph === "problem") {
+    // PROBLEEM (P1–P5): one at a time. Without the runtime nothing else
+    // can be checked, so then no counter.
+    const probs = env.problems || [];
+    const p = probs[0] || { text: "Er is een probleem.", kind: "problem" };
+    const counted = p.code !== "runtime-down" && probs.length > 1;
+    kids.push(stateLine("problem", counted ? `Probleem 1 van ${probs.length}` : "Probleem"));
+    kids.push(el("div", { class: "bad" }, el("p", {}, p.text)));
+    if (p.kind === "fixable") {
+      kids.push(el("div", { class: "fixbox" }, el("p", {}, el("b", {}, "Launch kan dit voor je oplossen. "), p.fix || "")));
+    }
+    if (env.problem_note) {
+      kids.push(el("p", { class: "note " + (env.problem_note === "Opgelost" ? "good" : "bad-note") }, env.problem_note));
+    }
+    const fixFirst = p.kind === "fixable" && env.problem_note !== "Opgelost";
+    if (p.kind === "fixable") btn("Los het op voor mij", "fix", fixFirst);
+    btn("Opnieuw proberen", "retry", !fixFirst);
+    btn("Stoppen", "stop");
+  } else if (ph === "fixing") {
+    // OPLOSSEN (O1, O2): no buttons.
+    kids.push(stateLine("busy", "Bezig met oplossen"));
+    kids.push(el("div", { class: "bar waiting" }, el("div", {})));
+    kids.push(el("p", { class: "muted" }, "Vraagt Windows om toestemming, klik dan op Ja; het venster kan achter de browser staan."));
+  } else if (ph === "notice") {
+    // MELDING (M1–M3).
+    const n = env.notice || {};
+    kids.push(stateLine("attention", "Eerst lezen"));
+    kids.push(el("div", { class: "notice" + (n.level === "danger" ? " danger" : "") },
+      el("b", {}, n.title || "Let op"), el("p", { class: "notice-text" }, n.text || "")));
+    btn("Akkoord en starten", "accept", true);
+    btn("Stoppen", "stop");
+  } else if (ph === "starting") {
+    // STARTEN (2A–2F).
+    kids.push(stateLine("starting", "Wordt gestart…"));
+    kids.push(progressBlock(env));
+    btn("Stoppen", "stop");
+  } else if (ph === "ready") {
+    // KLAAR (3A–3D).
+    kids.push(stateLine("ready", "Klaar"));
+    if (env.not_answering_since) {
+      kids.push(el("div", { class: "warn" }, el("p", { class: "since-text", "data-since": env.not_answering_since, "data-what": env.title }, "")));
+    }
+    if (env.unknown_since && now - env.unknown_since >= 60) {
+      kids.push(el("div", { class: "warn" }, el("p", {}, "Docker antwoordt even niet.")));
+    }
+    kids.push(partsList(mainParts(env)));
+    btn("Stoppen", "stop");
+  } else if (ph === "failed") {
+    // MISLUKT (F1–F5).
+    kids.push(stateLine("failed", "Starten mislukt"));
+    kids.push(el("div", { class: "bad" }, el("p", {}, failedText(env))));
+    kids.push(partsList(env.answering, "Deze onderdelen antwoorden"));
+    if (env.log_tail) {
+      kids.push(el("details", { class: "log" }, el("summary", {}, "Details tonen"), el("pre", {}, env.log_tail)));
+    }
+    btn("Opnieuw proberen", "start", true);
+    btn("Stoppen", "stop");
+  } else if (ph === "stopping") {
+    // STOPPEN (S1, S2); when it did not work, Opnieuw proberen.
+    if (env.stop_error) {
+      kids.push(stateLine("failed", "Stoppen lukte niet"));
+      kids.push(el("div", { class: "bad" }, el("p", {}, env.stop_error)));
+      btn("Opnieuw proberen", "retry", true);
+    } else {
+      kids.push(stateLine("busy", "Wordt gestopt…"));
+      kids.push(el("div", { class: "bar waiting" }, el("div", {})));
+      kids.push(el("p", { class: "muted" }, "Alles wordt opgeruimd. De vensters van de omgeving blijven open."));
+    }
+  } else {
+    kids.push(stateLine("busy", ph || "Even geduld…"));
+  }
+
+  if (mode === "round") kids.push(el("p", { class: "round-note" }, "Gestart door de rondgang."));
+  let actions = buttons;
+  if (mode === "round" || mode === "grey") actions = [];
+  if (mode === "two") actions = buttons.filter(b => b.textContent === "Stoppen");
+  if (mode === "two" && ph !== "stopping" && !actions.length) {
+    actions = [el("button", { onclick: () => act("stop", env) }, "Stoppen")];
+  }
+
+  const section = el("section", { class: mode === "grey" ? "card blocked" : "card", "aria-label": env.title, "data-id": env.id, "data-phase": ph },
+    el("div", { class: "head" },
+      el("div", { class: "logo", "aria-hidden": "true" }, (env.title || "?").charAt(0)),
+      el("div", {}, el("p", { class: "title" }, env.title), el("span", { class: "version" }, env.version || ""))),
+    el("p", { class: "summary" }, env.summary || ""),
+    licencesBlock(env),
+    ...kids,
+    actions.length ? el("div", { class: "actions" }, ...actions) : null);
+  return mode === "grey" ? inert(section) : section;
+}
+
+// Grey means inert (#284): what the card is, nothing to do with it. Lists
+// that unfold become a plain line, links plain text, buttons go.
+function inert(section) {
+  for (const d of [...section.querySelectorAll("details")]) {
+    const s = d.querySelector("summary");
+    d.replaceWith(el("p", { class: d.className + " folded" }, s ? s.textContent : ""));
+  }
+  for (const a of [...section.querySelectorAll("a")]) a.replaceWith(a.textContent);
+  for (const b of [...section.querySelectorAll("button, .auto")]) b.remove();
+  section.setAttribute("aria-disabled", "true");
+  return section;
+}
+
+const ACTIVE = new Set(["checking", "problem", "fixing", "notice", "starting", "ready", "failed", "stopping"]);
+
+// The round (#251, 1D and R1–R5).
+const titleOf = id => ((S && S.envs.find(e => e.id === id)) || {}).title || id || "";
+function cycleBox(c, anyActive) {
+  if (!c || !c.available) return null;
+  const kids = [];
+  if (c.active) {
+    kids.push(el("div", { class: "cycle-head" },
+      el("b", {}, `Ronde ${c.round}`), " · ",
+      el("span", { class: "cycle-now", "data-phase": c.phase || "", "data-until": c.until || "",
+                   "data-env": titleOf(c.env), "data-next": titleOf(c.next) }, "")));
+    if (c.last && c.last.length) kids.push(el("ul", { class: "cycle-last" }, ...c.last.slice(-3).map(l => el("li", {}, l))));
+    kids.push(el("div", { class: "actions" }, el("button", { class: "primary", onclick: () => cycleAct("stop") }, "Rondgang stoppen")));
+  } else {
+    kids.push(el("div", { class: "cycle-head" }, el("b", {}, "Rondgang"), " · alle omgevingen om de beurt starten, 5 minuten laten draaien en weer stoppen: een test die vanzelf doorloopt."));
+    if (c.autostart && !anyActive) kids.push(autoBlock(c.autostart.at, "De rondgang"));
+    if (c.last && c.last.length) kids.push(el("ul", { class: "cycle-last" }, ...c.last.slice(-3).map(l => el("li", {}, l))));
+    if (!anyActive) {
+      const row = el("div", { class: "actions" }, el("button", { onclick: () => cycleAct("start") }, "Rondgang nu starten"));
+      // A marker on the stick: the round begins at once at the next start-up too.
+      if (c.can_persist) row.append(el("button", { onclick: () => cycleAct(c.persisted ? "persist-off" : "persist-on") },
+        c.persisted ? "Na herstart meteen verder: aan (uitzetten)" : "Na herstart meteen verder: uit (aanzetten)"));
+      kids.push(row);
+    }
+  }
+  const box = el("section", { class: "cycle" + (c.active ? " active" : "") + (!c.active && anyActive ? " blocked" : "") }, ...kids);
+  return !c.active && anyActive ? inert(box) : box;
+}
+
+function render() {
+  const grid = document.getElementById("grid");
+  const top = document.getElementById("top");
+  const cyc = document.getElementById("cycle");
+  top.replaceChildren(...[
+    topMessage ? el("div", { class: "topmsg", role: "alert" }, el("span", {}, topMessage),
+      el("button", { onclick: () => { topMessage = ""; render(); } }, "Sluiten")) : null,
+    S && S.two_active ? el("div", { class: "twoactive", role: "status" }, "Er draaien twee omgevingen. Stop er één.") : null].filter(Boolean));
+  if (!S) { tick(); return; }
+  // Keep opened lists (licences, details) open across a redraw. The key:
+  // card, class, parent and the summary's first word (the licence block has
+  // two sub-lists with the same class).
+  const key = d => [d.closest(".card")?.getAttribute("aria-label"), d.className, d.parentElement.className,
+                    (d.querySelector("summary")?.textContent || "").split(" ")[0]].join("|");
+  const opened = new Set([...grid.querySelectorAll("details[open]")].map(key));
+  const c = S.cycle || {};
+  const active = S.envs.filter(e => ACTIVE.has(e.phase));
+  const modeOf = e => {
+    if (c.active) return e.cycle_here ? "round" : "grey";
+    if (S.two_active) return ACTIVE.has(e.phase) ? "two" : "grey";
+    if (active.length) return active.includes(e) ? "active" : "grey";
+    return "free";
+  };
+  cyc.replaceChildren(...[cycleBox(c, active.length > 0)].filter(Boolean));
+  grid.replaceChildren(...(S.envs.length ? S.envs.map(e => card(e, modeOf(e))) : [el("p", {}, "Er zijn geen omgevingen.")]));
+  for (const d of grid.querySelectorAll("details")) if (opened.has(key(d))) d.open = true;
+  tick();
+}
+
+// Contract G: the tab that pressed Starten opens the main part once, when
+// the environment is ready; the round and other tabs open nothing.
+function autoOpen() {
+  let id = null;
+  try { id = sessionStorage.getItem(OPEN_KEY); } catch (e) { return; }
+  if (!id || !S) return;
+  const env = S.envs.find(e => e.id === id);
+  if (!env || env.phase === "stopped") { try { sessionStorage.removeItem(OPEN_KEY); } catch (e) {} return; }
+  if (env.phase === "ready" && !(S.cycle && S.cycle.active)) {
+    try { sessionStorage.removeItem(OPEN_KEY); } catch (e) {}
+    openPart(env.url);
+  }
+}
+
 function tick() {
-  const now = Date.now() / 1000;
+  const now = serverNow(), local = nowLocal();
+  // GEEN LAUNCHER (§3.12) after 10 s without an answer; LADEN (§3.13) only
+  // when the first answer takes longer than 1 s.
+  const since = lastAnswer || pageLoaded;
+  const dead = local - since >= 10;
   const off = document.getElementById("offline");
-  if (off) off.hidden = now - lastAnswer < 30;
+  off.hidden = !dead;
+  if (dead) off.textContent = `De Launcher antwoordt niet sinds ${clock(since)}. Start de Launcher opnieuw.`;
+  document.body.classList.toggle("dead", dead);
+  if (dead && overlay) { hideOverlay(); }
+  const grid = document.getElementById("grid");
+  if (!S && !dead && local - pageLoaded >= 1 && !grid.childElementCount) grid.append(el("p", { class: "loading" }, "Even geduld…"));
+  if (!S && dead) grid.replaceChildren();
+  // An overlay whose answer never changes the state does not stay forever.
+  if (overlay && local - overlay.at > 30) { hideOverlay(); }
+
   for (const box of document.querySelectorAll(".auto[data-auto-at]")) {
     const left = Math.max(0, Math.ceil(+box.dataset.autoAt - now));
     const t = box.querySelector(".auto-text"), what = t.dataset.what;
     t.textContent = what
       ? (left > 0 ? `${what} start automatisch over ${dur(left)}` : `${what} wordt nu gestart…`)
       : (left > 0 ? `Start automatisch over ${dur(left)}` : "Wordt nu automatisch gestart…");
+  }
+  for (const p of document.querySelectorAll(".since-text[data-since]")) {
+    p.textContent = `${p.dataset.what} antwoordt al ${dur(now - +p.dataset.since)} niet.`;
   }
   for (const box of document.querySelectorAll(".progress[data-started]")) {
     const step = +box.dataset.step, steps = +box.dataset.steps, exp = +box.dataset.expected;
@@ -442,139 +650,59 @@ function tick() {
     if (act && act >= started - 5) t += ` · laatste activiteit ${dur(now - act)} geleden`;
     box.querySelector(".ptime").textContent = t;
     if (box.dataset.since) box.querySelector(".psince").textContent = "bezig sinds " + dur(now - +box.dataset.since);
-    if (pt.eta !== null) box.querySelector(".peta").textContent = pt.eta;
+    box.querySelector(".peta").textContent = pt.eta || "";
+  }
+  const s = document.querySelector(".cycle-now");
+  if (s) {
+    const left = s.dataset.until ? Math.max(0, Math.ceil(+s.dataset.until - now)) : 0;
+    const env = s.dataset.env, next = s.dataset.next;
+    const t = {
+      pause: `${env} start over ${dur(left)}`,
+      starting: `${env} wordt gestart`,
+      up: `${env} is klaar, nog ${dur(left)}`,
+      stopping: `${env} wordt gestopt`,
+    }[s.dataset.phase] || "";
+    s.textContent = t + (next && next !== env ? ` · daarna ${next}` : "");
   }
 }
 setInterval(tick, 1000);
 
-let lastData = [];
-function render(data) {
-  const grid = document.getElementById("grid");
-  // Keep opened lists (links, licences) open across a redraw.
-  // The key: card, class, parent and the summary's first word (the licence
-  // block has two sub-lists with the same class).
-  const key = d => [d.closest(".card").getAttribute("aria-label"), d.className, d.parentElement.className,
-                    (d.querySelector("summary")?.textContent || "").split(" ")[0]].join("|");
-  data = view(data);
-  const active = activeEnv(data);
-  const changed = (ACTIVE_ENV && ACTIVE_ENV.id) !== (active && active.id);
-  ACTIVE_ENV = active;
-  if (changed && lastCycleData) renderCycle(lastCycleData);
-  const opened = new Set([...grid.querySelectorAll("details[open]")].map(key));
-  grid.replaceChildren(...(data.length ? data.map(e => card(e, active)) : [el("p", {}, "Er zijn geen omgevingen.")]));
-  for (const d of grid.querySelectorAll("details")) {
-    if (opened.has(key(d))) d.open = true;
-  }
-  tick();
-}
-
-let lastJson = "";
+let polling = false;
 async function refresh() {
+  if (polling) return;
+  polling = true;
   try {
-    const r = await fetch("/api/environments", { cache: "no-store" });
-    const data = JSON.parse(await r.text());
-    // Redraw only when something changed, so a button is not replaced under
-    // the user's pointer every few seconds. The current activity changes
-    // often: it is updated in place (#235).
-    const stable = JSON.stringify(data, (k, v) => (k === "detail" || k === "activity" ? undefined : v));
-    lastData = data;
-    lastAnswer = Date.now() / 1000;
-    if (stable === lastJson) {
-      for (const env of data) {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    if (!r.ok) throw new Error("status " + r.status);
+    const data = await r.json();
+    lastAnswer = nowLocal();
+    if (typeof data.now === "number") skew = data.now - lastAnswer;
+    const changed = !S || S.seq !== data.seq || document.body.classList.contains("dead");
+    S = data;
+    if (overlay && overlay.seq !== data.seq) { hideOverlay(); }
+    if (changed) {
+      // What went wrong goes once the page has moved on (not at once: a 409
+      // often comes with another tab's change).
+      if (topMessage && lastAnswer - topMessageAt > 5) topMessage = "";
+      render();
+      autoOpen();
+    } else {
+      // Same seq: only what the start does right now changes (2E), in place,
+      // so a button is not replaced under the pointer.
+      for (const env of data.envs) {
         const box = env.progress && document.querySelector(`.progress[data-id="${env.id}"]`);
         if (box) setDetail(box, env.progress);
       }
-      return;
+      tick();
     }
-    lastJson = stable;
-    render(lastData);
-  } catch (e) { /* the next refresh tries again */ }
+  } catch (e) {
+    tick();   // GEEN LAUNCHER after 10 s
+  } finally {
+    polling = false;
+  }
 }
 refresh();
-setInterval(refresh, 5000);
-
-// The round (#251): every environment in turn, as a test that runs by itself.
-const title = id => (lastData.find(e => e.id === id) || {}).title || id || "";
-async function cycleAct(verb) {
-  if (verb === "start" || verb === "stop") {
-    const on = verb === "start";
-    ROUND_INTENT = { active: on, at: Date.now() / 1000 };
-    ROUND_ACTIVE = on;
-    renderCycle({ ...(lastCycleData || {}), available: true, active: on, round: (lastCycleData || {}).round || 1, phase: on ? "pause" : "", until: 0 });
-    render(lastData);
-  }
-  try {
-    await fetch(`/api/cycle/${verb}`, { method: "POST", headers: { "X-Launcher-Token": TOKEN } });
-  } catch (e) { /* the next refresh shows the state */ }
-  lastCycle = ""; refreshCycle(); lastJson = ""; refresh();
-}
-let lastCycleData = null;
-function renderCycle(c) {
-  lastCycleData = c;
-  const box = document.getElementById("cycle");
-  if (!c.available) { box.replaceChildren(); return; }
-  const kids = [];
-  if (c.active) {
-    kids.push(el("div", { class: "cycle-head" },
-      el("b", {}, `Rondgang (ronde ${c.round})`), " · ",
-      el("span", { class: "cycle-now", "data-phase": c.phase || "", "data-until": c.until || "",
-                   "data-env": title(c.env), "data-next": title(c.next) }, "")));
-    kids.push(el("div", { class: "actions" },
-      el("button", { class: "primary", onclick: () => cycleAct("stop") }, "Rondgang stoppen")));
-  } else {
-    kids.push(el("div", { class: "cycle-head" }, el("b", {}, "Rondgang"), " · alle omgevingen om de beurt starten, 5 minuten laten draaien en weer stoppen: een test die vanzelf doorloopt."));
-    if (c.autostart) {
-      // The round as the automatic start (#257), with a way out.
-      kids.push(el("div", { class: "auto", "data-auto-at": c.autostart.at },
-        el("span", { class: "auto-text", "data-what": "De rondgang" }, "Start automatisch…"),
-        el("button", { onclick: cancelAuto }, "Niet automatisch starten")));
-    }
-    kids.push(el("div", { class: "actions" }, ACTIVE_ENV ? null : el("button", { onclick: () => cycleAct("start") }, "Rondgang nu starten")));
-  }
-  if (c.can_persist && !(ACTIVE_ENV && !c.active)) {
-    // A marker on the stick: the round begins at once at the next start-up too.
-    kids[kids.length - 1].append(el("button", { onclick: () => cycleAct(c.persisted ? "persist-off" : "persist-on") },
-      c.persisted ? "Na herstart meteen verder: aan (uitzetten)" : "Na herstart meteen verder: uit (aanzetten)"));
-  }
-  if (c.last && c.last.length) {
-    kids.push(el("ul", { class: "cycle-last" }, ...c.last.slice(-3).map(l => el("li", {}, l))));
-  }
-  box.replaceChildren(el("section", { class: "cycle" + (c.active ? " active" : "") + (!c.active && ACTIVE_ENV ? " blocked" : "") }, ...kids));
-  tickCycle();
-}
-function tickCycle() {
-  const s = document.querySelector(".cycle-now");
-  if (!s) return;
-  const left = s.dataset.until ? Math.max(0, Math.ceil(+s.dataset.until - Date.now() / 1000)) : 0;
-  const env = s.dataset.env, next = s.dataset.next;
-  const t = {
-    pause: `${env} start over ${dur(left)}`,
-    starting: `${env} wordt gestart (zie de kaart)`,
-    up: `${env} is klaar, nog ${dur(left)} in de lucht`,
-    stopping: `${env} wordt gestopt`,
-  }[s.dataset.phase] || "";
-  s.textContent = t + (next && next !== env ? ` · daarna ${next}` : "");
-}
-setInterval(tickCycle, 1000);
-let lastCycle = "";
-async function refreshCycle() {
-  try {
-    const r = await fetch("/api/cycle", { cache: "no-store" });
-    const text = await r.text();
-    if (text === lastCycle) return;
-    lastCycle = text;
-    const c = JSON.parse(text);
-    // Until the server agrees with what was just pressed (or a minute on).
-    if (ROUND_INTENT && Date.now() / 1000 - ROUND_INTENT.at < 60 && !!c.active !== ROUND_INTENT.active) { lastCycle = ""; return; }
-    ROUND_INTENT = null;
-    const was = ROUND_ACTIVE;
-    ROUND_ACTIVE = !!c.active;
-    renderCycle(c);
-    if (was !== ROUND_ACTIVE) { lastJson = ""; refresh(); }
-  } catch (e) { /* the next refresh tries again */ }
-}
-refreshCycle();
-setInterval(refreshCycle, 5000);
+setInterval(refresh, 2000);
 </script>
 </body>
 </html>
