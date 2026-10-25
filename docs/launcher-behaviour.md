@@ -2,7 +2,7 @@
 
 Dit document beschrijft hoe de Launcher (`launcher/launcher.py` en `launcher/launcher.html`) en het commando `launch` zich moeten gedragen: welke fasen er zijn, wat de gebruiker in elke fase ziet en kan doen, en waar elke knop heen gaat. De code volgt dit document. Klopt de code niet met dit document, dan is de code fout (of moet dit document eerst worden aangepast).
 
-Dit is het ontwerp van 25 oktober 2026. De huidige code doet het nog niet zo; wat er nu misgaat staat in de bijlage. De browsertest `tests/e2e/launcher-behaviour.js` moet op dit ontwerp worden aangepast.
+Dit is het ontwerp van 25 oktober 2026. Hoe het gebouwd is staat in §7, wat nog moet in §8. De bijlage beschrijft wat er vóór dit ontwerp misging.
 
 ## In het kort
 
@@ -224,14 +224,53 @@ Twee file locks van het besturingssysteem in de map van Launch. Ze verdwijnen va
 - **"De Launcher draait":** de Launcher houdt hem vast zolang hij draait. `start`, `stop` en `fix` uit een terminal weigeren dan (exitcode 5); `list`, `status` en `check` mogen wel.
 - **"Er loopt een handeling":** een start, stop of fix houdt hem vast zolang die loopt, ook als de Launcher intussen stopt. Een tweede `launch` weigert; een herstarte Launcher ziet hem en staat meteen in de juiste fase.
 
-## 6. Wat erbij komt in `environment.json`
+## 6. `environment.json`
 
-- **Onderlaag:** wat de omgeving nodig heeft om te draaien (Docker, een VM, …). Draait die niet, dan is dat een probleem van die omgeving.
-- **Voorwaarden:** het platform (`needs.platform`), en het geheugen dat de computer minstens moet hebben.
-- **Keuzes:** onderdelen en sets demodata, elk met een naam, een uitleg, een standaard (aan of uit), en bij demodata het onderdeel dat ze nodig heeft. `list --json` geeft ze door aan de Launcher.
-- **Teksten per taal** (`{"nl": "…"}`), te beginnen met alleen `nl`.
+- **Onderlaag:** wat de omgeving nodig heeft om te draaien (Docker, een VM, …). Draait die niet, dan is dat een probleem van die omgeving. *(Nog te bouwen: nu gaat Launch uit van Docker; zie §8.)*
+- **Voorwaarden:** het platform (`needs.platform`), en het geheugen dat de computer minstens moet hebben (`needs.memory_gib`: minder geheugen in de computer is een voorwaarde, minder geheugen voor Docker een probleem).
+- **Bekende problemen:** `checks`, elk met hoe je het ziet (`when`), de tekst (`problem`) en eventueel een oplossing (`fix`: `run`, `text`, `os`). Een probleem met een oplossing voor dit besturingssysteem is "door Launch op te lossen".
+- **Keuzes** (`options`, 1C6):
 
-## Bijlage: wat er nu misgaat (25 oktober 2026)
+  ```json
+  "options": [
+    {"id": "pipelinq", "kind": "part", "title": {"nl": "Klantcontact (Pipelinq)"}, "about": {"nl": "…"}, "default": true},
+    {"id": "pipelinq-demo", "kind": "data", "title": {"nl": "Voorbeeldklanten (Pipelinq)"}, "default": true, "needs": ["pipelinq"]}
+  ]
+  ```
+
+  - `kind`: `part` (een onderdeel) of `data` (een set demodata). `default`: aan of uit als niemand iets kiest (zonder `default`: aan). `needs`: de onderdelen die deze keuze nodig heeft.
+  - Wat ergens van afhangt dat uit staat, staat ook uit. Dat wordt niet onthouden: zet je het onderdeel weer aan, dan komt de demodata mee terug. Wat de gebruiker zelf uitzette, blijft uit.
+  - De Launcher onthoudt per omgeving alleen wat afwijkt van de standaard (`choices.json` in de map van Launch) en geeft dat bij een start mee als `--with`/`--without`. De rondgang en de automatische start gebruiken altijd de standaard.
+  - `launch start` geeft de keuze door aan `run.sh` als `LAUNCH_OPTIONS_ON` en `LAUNCH_OPTIONS_OFF` (kommalijsten). Zonder die variabelen geldt de standaard.
+  - `run.sh`/`deploy.sh` volgen de keuze bij elke start: een onderdeel dat uit staat, wordt niet geïnstalleerd, of uitgezet als een eerdere start het aanzette. Demodata die uit staat, wordt niet geladen; demodata van een eerdere start blijft staan. Het aantal stappen blijft gelijk; een stap die niets te doen heeft, zegt "overgeslagen (uitgezet bij Aanpassen)".
+- **Teksten per taal:** elke tekst mag een string zijn of `{"nl": "…", "en": "…"}`. `launch` kiest de taal van de computer (anders `nl`, anders de eerste); de Launcher vraagt altijd `nl`.
+
+## 7. Zo is het gebouwd (stand 25 oktober 2026)
+
+Gebouwd volgens §1–§6, met deze keuzes in de uitwerking:
+
+- **De Launcher meet op de achtergrond** (`launch status --json`, elke ~3 s) en antwoordt de pagina meteen uit het geheugen (`GET /api/state`, met een volgnummer `seq`). Een handeling (`POST /api/start|retry|fix|accept|stop/<id>`, `POST /api/options/<id>`) zet meteen de nieuwe fase en loopt verder in een thread. Elke overgang staat in het logboek van de Launcher.
+- **Feiten** in `launch status --json`: startproces, mislukt, eigen containers, antwoordt, Docker; elk ja, nee of `null` (weet niet). Een dichte poort op localhost is meteen "nee" (Windows wachtte eerst 2 s per poort).
+- **Tijdens de rondgang** werkt alleen **Rondgang stoppen**; de knoppen op de kaarten geven "De rondgang loopt; stop die eerst."
+- **De voorwaarde** (1C5) staat er als "Kan niet draaien op deze computer.", met de reden eronder.
+- **PROBLEEM** telt "Probleem 1 van n" met de problemen die er nu nog zijn; opgeloste problemen tellen niet mee.
+- **Het akkoord** op een MELDING staat in `accepted.json` (per omgeving de versies).
+- **Het venster bij KLAAR:** het tabblad dat startte, opent het; houdt de pop-upblokker het tegen, dan zegt de kaart dat, met wat je kunt doen.
+- **De commandline:** `launch check` geeft 0 (in orde), 3 (probleem) of 4 (voorwaarde). Het startproces is het verborgen subcommando `supervise`. `launch --version` komt uit de constante `VERSION` in `launch.py`.
+- **Tests:** `python -m unittest discover tests` (de overgangen van de Launcher, de commandline, de keuzes); geen Docker nodig.
+
+## 8. Nog te doen
+
+1. **De locks** van §5 ("de Launcher draait" en "er loopt een handeling"). Nu kunnen de Launcher en een terminal nog tegelijk iets doen.
+2. **De browsertest** `tests/e2e/launcher-behaviour.js` test nog de oude pagina; hij moet langs de fasen van §3.
+3. **Links die bij een keuze horen:** een link in `links` krijgt `needs` (zoals een keuze), zodat Valtimo zonder Open Formulieren de links "Burgerformulier" en "Open Formulieren beheer" niet toont.
+4. **De onderlaag per omgeving** (§6): nu is Docker de enige; Mijn Bureau draait in een VM.
+5. **De DAWO-USB-SSD:** de `launch` daar kent nog de oude opties (`--list`, `--status`, …). Deze Launcher praat daar pas mee als die `launch` dezelfde subcommando's en JSON geeft.
+6. **De taal van de pagina** volgt later die van de browser; nu is de pagina Nederlands.
+7. **Demodata verwijderen** als je die uitzet na een eerdere start: nu blijft die staan (de apps hebben er geen commando voor).
+8. **De keuzes echt proberen** met Tezza, Nextcloud Common Ground en Valtimo: de scripts zijn alleen op syntax en met droge runs gecontroleerd.
+
+## Bijlage: wat er misging vóór dit ontwerp (25 oktober 2026)
 
 Waargenomen: Tezza draaide al uren en de containers stonden er gewoon. Toch meldde de Launcher om 08:22:01–08:22:25 dat Tezza "Niet actief" was, en de pagina zette alle kaarten weer aan. Docker zag in die tijd geen enkele container stoppen of starten.
 
