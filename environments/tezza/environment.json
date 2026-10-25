@@ -344,7 +344,7 @@
     "url": "http://localhost:8082/"
   },
   "needs": {
-    "memory_gib": 12
+    "memory_gib": 16
   },
   "checks": [
     {
@@ -354,14 +354,12 @@
       },
       "problem": "De naam 'identity' is op deze computer onbekend; zonder die naam kun je niet inloggen bij Tezza (Keycloak draait op http://identity:8181).",
       "fix": {
-        "text": "In het hosts-bestand van Windows (C:\\Windows\\System32\\drivers\\etc\\hosts) de regel '127.0.0.1 identity' toevoegen, zodat je bij Tezza kunt inloggen. Er komt eerst een kopie van het oude bestand (hosts.bak-launch). Daarvoor vraagt Windows om beheerdersrechten: klik daar op Ja.",
-        "run": [
-          "../../tools/hostnamen.ps1",
-          "identity"
-        ],
-        "os": [
-          "windows"
-        ]
+        "text": "De regel '127.0.0.1 identity' toevoegen aan het hosts-bestand van deze computer, zodat je bij Tezza kunt inloggen. Er komt eerst een kopie van het oude bestand (hosts.bak-launch). Daarvoor wordt om beheerdersrechten gevraagd.",
+        "run": {
+          "windows": ["../../tools/hostnamen.ps1", "identity"],
+          "macos": ["../../tools/hostnamen.sh", "identity"],
+          "linux": ["../../tools/hostnamen.sh", "identity"]
+        }
       }
     }
   ],

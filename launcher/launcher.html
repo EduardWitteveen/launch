@@ -300,7 +300,12 @@ function card(env, active) {
     }
     actions.append(el("button", { onclick: () => act("stop", env), ...(acting ? { disabled: "" } : {}) }, "Stoppen"));
   }
-  const warn = env.state === "stopped" && env.problems.length
+  // Not only while "stopped": a container that is there but not
+  // running (OOM-killed, or stuck since it never started) is a problem in
+  // every state - while starting (sooner than its healthcheck would time
+  // out), while "klaar" (everything the card checks for still answers, so
+  // nothing else would ever show this), and next to "Starten mislukt".
+  const warn = env.problems.length
     ? el("div", { class: "warn" }, "Let op:", el("ul", {}, ...env.problems.map(p => el("li", {}, p))),
         (env.fixes || []).length && !round
           ? el("div", { class: "actions" }, el("button", { onclick: () => act("fix", env),
