@@ -7,12 +7,17 @@ starts it with Docker step by step and writes the Launcher's progress file.
 The Launcher (launcher/launcher.py) runs this command for its buttons.
 
   python launch.py                       the environments you can start
-  python launch.py <id> [--yes]          start one (another one stops first)
+  python launch.py <id>                  start one (it fixes nothing itself)
   python launch.py --stop <id>           stop one
   python launch.py --status [--json]     which environments run, and where
   python launch.py --list [--json]       the catalogue (--json: for the Launcher)
-  python launch.py --fix <id>            fix the known problems (starting does too)
+  python launch.py --fix <id>            fix the known problems Launch can fix
   python launch.py --check <id> [--json] only check whether this machine can
+
+A start checks first and never fixes anything. Its exit codes: 0 started (or
+already starting), 3 a problem (the start did not begin; --fix <id> solves
+the ones Launch can fix), 4 a precondition (cannot run on this computer),
+5 another environment runs (stop it first). --yes is accepted and ignored.
 
 Works on Windows (Docker Desktop and Git for Windows' bash) and on Linux or
 macOS (docker and bash). State lives in LAUNCH_STATE (default: the user's
@@ -26,6 +31,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -190,14 +196,51 @@ def kill_tree(pid):
 
 
 # --- state -------------------------------------------------------------------
+#
+# Every fact is True, False or None: None is "do not know" (no answer in time),
+# which the Launcher must not read as "off" (docs/launcher-behaviour.md, rule 2).
+
+def listens(port, timeout=1.0):
+    """Whether something listens on 127.0.0.1:port: True, False (refused) or None (no answer in time)."""
+    with socket.socket() as s:
+        if WINDOWS:
+            # Windows retries a refused connect for ~2 s; without SYN retransmissions
+            # (SIO_TCP_INITIAL_RTO) a closed port is refused at once.
+            import ctypes
+
+            class Rto(ctypes.Structure):
+                _fields_ = [("Rtt", ctypes.c_ushort), ("MaxSynRetransmissions", ctypes.c_ubyte)]
+            rto, n = Rto(0xFFFF, 0xFE), ctypes.c_ulong()  # unspecified RTT, no SYN retransmissions
+            ctypes.windll.ws2_32.WSAIoctl(ctypes.c_void_p(s.fileno()), ctypes.c_ulong(0x98000011), ctypes.byref(rto),
+                                          ctypes.sizeof(rto), None, 0, ctypes.byref(n), None, None)
+        s.settimeout(timeout)
+        try:
+            s.connect(("127.0.0.1", port))
+            return True
+        except socket.timeout:
+            return None
+        except OSError:
+            return False
+
 
 def answers(url):
+    """True: the url answers 2xx/3xx; False: refused or an error status; None: no answer in time."""
+    u = urllib.parse.urlsplit(url or "")
+    if u.hostname in ("localhost", "127.0.0.1"):
+        # A closed port: False at once, not after a GET that tries ::1 and 127.0.0.1 in turn.
+        up = listens(u.port or (443 if u.scheme == "https" else 80))
+        if up is not True:
+            return up
     try:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=4) as r:
             return 200 <= r.status < 400
     except urllib.error.HTTPError as e:
         return 200 <= e.code < 400
+    except urllib.error.URLError as e:
+        return None if isinstance(e.reason, (socket.timeout, TimeoutError)) else False
+    except (socket.timeout, TimeoutError):
+        return None
     except Exception:
         return False
 
@@ -211,72 +254,159 @@ def progress_of(eid):
         return None
 
 
-_CONTAINERS = None
+_DOCKER = None
+
+
+def docker_info():
+    """The Docker daemon, once per command: {"up": True|False|None, "mem": GiB or None}.
+    False: clearly not running (no docker CLI, or it cannot connect); None: no answer in time."""
+    global _DOCKER
+    if _DOCKER is None:
+        try:
+            out = subprocess.run(["docker", "info", "--format", "{{.ServerVersion}}\t{{.MemTotal}}"],
+                                 capture_output=True, text=True, timeout=10, creationflags=NO_WINDOW)
+            version, mem = (out.stdout.strip().split("\t") + [""])[:2]
+            if out.returncode == 0 and version:
+                _DOCKER = {"up": True, "mem": int(mem) / 2**30 if mem.isdigit() else None}
+            else:
+                said = (out.stderr or "") + (out.stdout or "")
+                clear = re.search(r"connect|daemon|pipe|not running", said, re.I)
+                _DOCKER = {"up": False if clear else None, "mem": None}
+        except OSError:
+            _DOCKER = {"up": False, "mem": None}
+        except subprocess.TimeoutExpired:
+            _DOCKER = {"up": None, "mem": None}
+    return _DOCKER
+
+
+_UNSET = object()
+_CONTAINERS = _UNSET
 
 
 def containers():
-    """The running containers: [(name, compose project, host ports)], once per command."""
+    """The running containers: [(name, compose project, host ports)], once per command;
+    None when docker ps failed or Docker does not answer in time."""
     global _CONTAINERS
-    if _CONTAINERS is None:
-        _CONTAINERS = []
-        try:
-            out = subprocess.run(["docker", "ps", "--format",
-                                  '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Ports}}'],
-                                 capture_output=True, text=True, timeout=30, creationflags=NO_WINDOW)
-            for line in out.stdout.splitlines() if out.returncode == 0 else []:
-                name, project, ports = (line.split("\t") + ["", ""])[:3]
-                published = set()
-                for a, b in re.findall(r":(\d+)(?:-(\d+))?->", ports):
-                    published.update(range(int(a), int(b or a) + 1))
-                _CONTAINERS.append((name, project, published))
-        except (OSError, subprocess.TimeoutExpired):
-            pass
+    if _CONTAINERS is _UNSET:
+        up = docker_info()["up"]
+        if up is False:
+            _CONTAINERS = []  # no Docker, no containers
+        elif up is None:
+            _CONTAINERS = None  # docker ps would hang the same way
+        else:
+            _CONTAINERS = None
+            try:
+                out = subprocess.run(["docker", "ps", "--format",
+                                      '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Ports}}'],
+                                     capture_output=True, text=True, timeout=15, creationflags=NO_WINDOW)
+                if out.returncode == 0:
+                    _CONTAINERS = []
+                    for line in out.stdout.splitlines():
+                        name, project, ports = (line.split("\t") + ["", ""])[:3]
+                        published = set()
+                        for a, b in re.findall(r":(\d+)(?:-(\d+))?->", ports):
+                            published.update(range(int(a), int(b or a) + 1))
+                        _CONTAINERS.append((name, project, published))
+            except (OSError, subprocess.TimeoutExpired):
+                pass
     return _CONTAINERS
 
 
-def own_up(env):
-    """Whether the environment answers, and (with a "project") with its own containers:
-    something else on its port (another program, another project) is not it."""
-    up = answers((env.get("health") or {}).get("url") or env["url"])
+def own_containers(env, up):
+    """Whether the environment's own compose project runs: something else on its port
+    (another program, another project) is not it. Without a "project": whether it answers."""
     project = env.get("project")
-    return up and (not project or any(p == project for _, p, _ in containers()))
+    if not project:
+        return up
+    cs = containers()
+    return None if cs is None else any(p == project for _, p, _ in cs)
 
 
 def status_of(env):
     eid = env["id"]
-    up = own_up(env)
-    if running_pid(eid):
-        return {"id": eid, "url": env["url"], "state": "starting", "answers": up, "progress": progress_of(eid)}
-    if os.path.exists(paths(eid)["failed"]):
-        return {"id": eid, "url": env["url"], "state": "failed", "answers": up, "progress": progress_of(eid)}
-    return {"id": eid, "url": env["url"], "state": "ready" if up else "stopped", "answers": up}
+    up = answers((env.get("health") or {}).get("url") or env["url"])
+    own = own_containers(env, up)
+    process = bool(running_pid(eid))
+    failed = os.path.exists(paths(eid)["failed"])
+    if process:
+        state = "starting"
+    elif failed:
+        state = "failed"
+    elif own is True and up is True:
+        state = "ready"
+    elif own is None or up is None:
+        state = "unknown"
+    else:
+        state = "stopped"
+    return {"id": eid, "url": env["url"], "state": state, "process": process, "failed": failed,
+            "containers": own, "answers": up, "docker": docker_info()["up"],
+            "progress": progress_of(eid) if process or failed else None}
 
 
 # --- checks before a start -----------------------------------------------------
 
-def docker_memory_gib():
+def machine_memory_gib():
+    """The physical memory of this computer in GiB, or None."""
     try:
-        out = subprocess.run(["docker", "info", "--format", "{{.MemTotal}}"], capture_output=True, text=True, timeout=30,
-                             creationflags=NO_WINDOW)
-        return int(out.stdout.strip()) / 2**30 if out.returncode == 0 else None
-    except (OSError, ValueError, subprocess.TimeoutExpired):
+        if WINDOWS:
+            import ctypes
+
+            class Status(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong)] + [
+                    (n, ctypes.c_ulonglong) for n in ("ullTotalPhys", "ullAvailPhys", "ullTotalPageFile",
+                                                      "ullAvailPageFile", "ullTotalVirtual", "ullAvailVirtual",
+                                                      "ullAvailExtendedVirtual")]
+            st = Status()
+            st.dwLength = ctypes.sizeof(Status)
+            if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)):
+                return None
+            return st.ullTotalPhys / 2**30
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 2**30
+    except (OSError, ValueError, AttributeError):
         return None
 
 
+def item(code, kind, text, **extra):
+    return {"code": code, "kind": kind, "text": text, **extra}
+
+
 def check(env):
-    problems = []
-    if (env.get("needs") or {}).get("platform") == "dawo-usb":
-        return [f"{env['title']} werkt nog alleen vanaf de DAWO-USB-SSD (Kubernetes in een virtuele machine); "
-                "in Launch op deze computer komt het later."]
-    mem = docker_memory_gib()
-    if mem is None:
-        problems.append("Docker draait niet. Start Docker Desktop en probeer het dan opnieuw.")
-    else:
-        need = (env.get("needs") or {}).get("memory_gib", 0)
-        if mem + 0.5 < need:
-            problems.append(f"Docker heeft {mem:.0f} GB geheugen; {env['title']} heeft er ongeveer {need} nodig "
-                            "(zie de README: het geheugen van Docker vergroten).")
-    return problems + busy_ports(env) + [c["problem"] for c in failing_checks(env)]
+    """What stands in the way of a start, in the order of docs section 3.2: [{code, kind, text, ...}].
+    kind: precondition (cannot run on this computer), problem (the person fixes it),
+    fixable (launch --fix can fix it too)."""
+    needs = env.get("needs") or {}
+    need = needs.get("memory_gib", 0)
+    if needs.get("platform") == "dawo-usb":
+        # Not Docker on this computer at all: nothing else here applies.
+        return [item("platform", "precondition",
+                     f"{env['title']} werkt nog alleen vanaf de DAWO-USB-SSD (Kubernetes in een virtuele machine); "
+                     "in Launch op deze computer komt het later.")]
+    items = []
+    have = machine_memory_gib()
+    if have is not None and have + 0.5 < need:
+        items.append(item("machine-memory", "precondition",
+                          f"Deze computer heeft {have:.0f} GB geheugen; {env['title']} heeft er ongeveer {need} nodig.",
+                          data={"have": round(have), "need": need}))
+    docker = docker_info()
+    if docker["up"] is not True:
+        # The other checks need Docker: stop here.
+        items.append(item("runtime-down", "problem",
+                          "Docker draait niet. Start Docker Desktop en probeer het dan opnieuw." if docker["up"] is False
+                          else "Docker antwoordt niet. Start Docker Desktop opnieuw en probeer het dan nog eens."))
+        return items
+    mem = docker["mem"]
+    if mem is not None and mem + 0.5 < need:
+        items.append(item("docker-memory", "problem",
+                          f"Docker heeft {mem:.0f} GB geheugen; {env['title']} heeft er ongeveer {need} nodig "
+                          "(zie de README: het geheugen van Docker vergroten).", data={"have": round(mem), "need": need}))
+    items += busy_ports(env)
+    for c in failing_checks(env):
+        code = "check:" + c.get("id", "")
+        if has_fix(c):
+            items.append(item(code, "fixable", c["problem"], fix=c["fix"].get("text", c["problem"])))
+        else:
+            items.append(item(code, "problem", c["problem"]))
+    return items
 
 
 def ports_of(env):
@@ -291,17 +421,14 @@ def ports_of(env):
 
 
 def busy_ports(env):
-    """A problem per program that holds a port the environment needs. Launch's own
-    environments do not count: a start stops the others first."""
-    import socket
+    """A port-in-use item per program that holds a port the environment needs. Launch's own
+    environments do not count: a start refuses while another one runs."""
     ours = {e.get("project") for e in catalog() if e.get("project")}
     holders = {}
     for port in ports_of(env):
-        with socket.socket() as s:
-            s.settimeout(0.5)
-            if s.connect_ex(("127.0.0.1", port)) != 0:
-                continue  # free
-        held = [(n, p) for n, p, published in containers() if port in published]
+        if not listens(port, 0.5):
+            continue  # free (or no answer: not held either)
+        held = [(n, p) for n, p, published in containers() or [] if port in published]
         if held and all(p in ours for _, p in held):
             continue
         holders.setdefault(held[0][0] if held else "", []).append(port)
@@ -309,13 +436,14 @@ def busy_ports(env):
     for name, ports in holders.items():
         which = ("Poort " if len(ports) == 1 else "De poorten ") + ", ".join(map(str, ports))
         if name:
-            problems.append(f"{which} {'is' if len(ports) == 1 else 'zijn'} bezet door de container '{name}', "
-                            f"die niet bij Launch hoort; {env['title']} heeft {'die' if len(ports) == 1 else 'ze'} "
-                            f"nodig. Stop die container eerst (bijvoorbeeld: docker stop {name}).")
+            text = (f"{which} {'is' if len(ports) == 1 else 'zijn'} bezet door de container '{name}', "
+                    f"die niet bij Launch hoort; {env['title']} heeft {'die' if len(ports) == 1 else 'ze'} "
+                    f"nodig. Stop die container eerst (bijvoorbeeld: docker stop {name}).")
         else:
-            problems.append(f"{which} {'is' if len(ports) == 1 else 'zijn'} bezet door een ander programma op deze "
-                            f"computer; {env['title']} heeft {'die' if len(ports) == 1 else 'ze'} nodig. "
-                            "Sluit dat programma eerst.")
+            text = (f"{which} {'is' if len(ports) == 1 else 'zijn'} bezet door een ander programma op deze "
+                    f"computer; {env['title']} heeft {'die' if len(ports) == 1 else 'ze'} nodig. "
+                    "Sluit dat programma eerst.")
+        problems.append(item("port-in-use", "problem", text, data={"ports": ports, "holder": name or None}))
     return problems
 
 
@@ -338,8 +466,9 @@ def busy_ports(env):
 #
 # Paths in "command" and "run" are relative to the environment's directory;
 # .ps1 runs with PowerShell, .sh with bash, anything else as a program. A start
-# runs the fixes first (the Launcher says what they change and asks); `launch
-# --fix <id>` runs them alone. Whether a fix worked is the check, run again.
+# never runs a fix: it names the problem and `launch --fix <id>`, which runs
+# them (the Launcher says first what they change). Whether a fix worked is the
+# check, run again.
 
 def this_os():
     return "windows" if WINDOWS else "macos" if sys.platform == "darwin" else "linux"
@@ -359,7 +488,6 @@ def fails(env, c):
     """Whether check c finds its problem on this machine."""
     when = c.get("when") or {}
     if "host_unknown" in when:
-        import socket
         try:
             socket.gethostbyname(when["host_unknown"])
             return False
@@ -383,12 +511,6 @@ def has_fix(c):
     return bool(f.get("run")) and this_os() in f.get("os", [this_os()])
 
 
-def fixes_of(env):
-    """The failing checks that have a fix here: [{id, problem, text}]."""
-    return [{"id": c.get("id", ""), "problem": c["problem"], "text": c["fix"].get("text", c["problem"])}
-            for c in failing_checks(env) if has_fix(c)]
-
-
 def fix(env):
     """Run the fixes of the failing checks; return the ids that still fail."""
     failed = []
@@ -408,28 +530,32 @@ def fix(env):
 
 # --- commands ------------------------------------------------------------------
 
-def cmd_start(eid, yes):
+def cmd_start(eid):
     env = env_of(eid)
-    fixes = fixes_of(env)
-    if fixes:
-        print("Eerst lost Launch dit op:\n- " + "\n- ".join(f["text"] for f in fixes))
-        fix(env)
-    problems = check(env)
-    if problems:
-        print("Let op:\n- " + "\n- ".join(problems))
-        if not yes:
-            print("Niet gestart. Gebruik --yes om toch te starten.", file=sys.stderr)
-            return 3
-    # Every other environment stops, also one that does not answer (yet): its
-    # containers would hold the ports this one needs.
-    for other in catalog():
-        if other["id"] != eid:
-            if status_of(other)["state"] != "stopped":
-                print(f"Eerst stoppen: de {other['title']}-omgeving (er draait één omgeving tegelijk).")
-            cmd_stop(other["id"], quiet=True)
     if running_pid(eid):
         print(f"De {env['title']}-omgeving wordt al gestart.")
         return 0
+    # It never fixes anything itself: it names what is wrong and stops.
+    items = check(env)
+    pre = [i for i in items if i["kind"] == "precondition"]
+    if pre:
+        print("Kan niet draaien op deze computer:\n- " + "\n- ".join(i["text"] for i in pre))
+        return 4
+    if items:
+        print("Niet gestart. Eerst dit oplossen:\n- " + "\n- ".join(i["text"] for i in items))
+        if any(i["kind"] == "fixable" for i in items):
+            print(f"Oplossen: python launch.py --fix {eid}")
+        return 3
+    # One at a time: another one that runs is the person's to stop, not ours.
+    for other in catalog():
+        if other["id"] == eid:
+            continue
+        st = status_of(other)
+        if st["state"] in ("starting", "ready", "failed"):
+            print(f"De {other['title']}-omgeving draait; stop die eerst (python launch.py --stop {other['id']}).")
+            return 5
+        if st["state"] == "stopped" and st["containers"] is True and other.get("project"):
+            cmd_stop(other["id"], quiet=True)  # leftovers that do not answer would hold the ports
     spawn_supervisor(eid)
     print(f"De {env['title']}-omgeving wordt gestart. Volg het met: python launch.py --status")
     print(f"Daarna te openen op {env['url']}")
@@ -448,7 +574,7 @@ def cmd_stop(eid, quiet=False):
             os.remove(p[k])
     # A stop that left it running must say so: the Launcher shows the error
     # instead of waiting for a stop that never comes.
-    if answers((env.get("health") or {}).get("url") or env["url"]):
+    if answers((env.get("health") or {}).get("url") or env["url"]) is True:
         print(f"De {env['title']}-omgeving draait nog: stoppen lukte niet. De details staan in {eid}.log.")
         return 1
     if not quiet:
@@ -459,8 +585,7 @@ def cmd_stop(eid, quiet=False):
 def main(argv):
     as_json = "--json" in argv
     argv = [a for a in argv if a != "--json"]
-    yes = "--yes" in argv
-    argv = [a for a in argv if a != "--yes"]
+    argv = [a for a in argv if a != "--yes"]  # accepted and ignored: a start fixes nothing
     if not argv or argv[0] == "--list":
         envs = catalog()
         if as_json:
@@ -474,20 +599,16 @@ def main(argv):
         if as_json:
             print(json.dumps(out, ensure_ascii=False))
         else:
-            words = {"ready": "klaar op", "starting": "wordt gestart", "failed": "starten mislukt", "stopped": "niet actief"}
+            words = {"ready": "klaar op", "starting": "wordt gestart", "failed": "starten mislukt", "stopped": "niet actief",
+                     "unknown": "onbekend"}
             for s, e in zip(out, catalog()):
                 print(f"{e['title']}: {words[s['state']]}" + (f" {e['url']}" if s["state"] == "ready" else ""))
         return 0
     if argv[0] == "--check":
-        env = env_of(argv[1])
-        problems = check(env)
-        fixes = fixes_of(env)
-        # blocking: what no fix solves (the Launcher asks before it starts anyway).
-        fixed = [f["problem"] for f in fixes]
-        print(json.dumps({"ok": not problems, "problems": problems, "fixes": fixes,
-                          "blocking": [p for p in problems if p not in fixed]}, ensure_ascii=False)
-              if as_json else ("Alles in orde." if not problems else "\n".join(problems)))
-        return 0 if not problems else 1
+        items = check(env_of(argv[1]))
+        print(json.dumps({"ok": not items, "items": items}, ensure_ascii=False)
+              if as_json else ("Alles in orde." if not items else "\n".join(i["text"] for i in items)))
+        return 0 if not items else 1
     if argv[0] == "--fix":
         failed = fix(env_of(argv[1]))
         print("Opgelost." if not failed else "Niet gelukt (geen toestemming gegeven?). Probeer het opnieuw.")
@@ -500,7 +621,7 @@ def main(argv):
     if argv[0].startswith("-"):
         print(__doc__)
         return 2
-    return cmd_start(argv[0], yes)
+    return cmd_start(argv[0])
 
 
 if __name__ == "__main__":
