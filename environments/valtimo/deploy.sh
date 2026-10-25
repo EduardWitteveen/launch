@@ -12,6 +12,8 @@
 #
 # Inputs come from the environment, set by the host from the manifest:
 #   VT_REPO VT_REV VT_OVERRIDE DOCKER_URL DOCKER_SHA COMPOSE_URL COMPOSE_SHA
+#   LAUNCH_OPTIONS_OFF (Launch's "Aanpassen"): a comma list; "openformulieren"
+#   there leaves out Open Formulieren (the citizen form). Not set: everything on.
 #
 # Experimental and unofficial. Not for production.
 # SPDX-License-Identifier: EUPL-1.2
@@ -38,6 +40,13 @@ DOCKER_DIR="${DAWO_DOCKER_DIR:-/opt/dawo-docker}" # overridable for tests outsid
 # openformulieren profile for the citizen form (#260). Not openklant: nothing
 # in the demo uses it.
 PROFILES=(demo zgw openformulieren)
+# Switched off at Aanpassen: without its profile (not pulled, not started),
+# and its containers from an earlier start are stopped (their data stays).
+OPENFORMS_OFF=0
+if [[ ",${LAUNCH_OPTIONS_OFF:-}," == *",openformulieren,"* ]]; then OPENFORMS_OFF=1; PROFILES=(demo zgw); fi
+OPENFORMS_SERVICES=(open-forms-web open-forms-celery open-forms-celery-beat open-forms-celery-flower
+                    open-forms-busybox open-forms-redis open-forms-database)
+SKIPPED="overgeslagen (uitgezet bij Aanpassen)"
 PROFILE="${PROFILES[*]}"
 # The compose project (the directory name); manifest valtimo.compose.project.
 PROJECT="gzac-docker-compose"
@@ -192,6 +201,10 @@ phase_pull() {
 
 phase_up() {
   log "start the demo (docker compose, profiles ${PROFILE}: up -d)"
+  if [[ "${OPENFORMS_OFF}" -eq 1 ]]; then
+    compose --profile openformulieren stop "${OPENFORMS_SERVICES[@]}" >/dev/null 2>&1 || true
+    info "Open Formulieren: ${SKIPPED}"
+  fi
   compose up -d
 }
 
@@ -224,7 +237,9 @@ phase_ready() {
   info "frontend answers (${waited}s)"
   # Open Zaak and the citizen form (#260): their first migrations take a few
   # minutes more.
-  for url in http://localhost:8001/admin/ http://localhost:8003/leningaanvragen/; do
+  local urls=(http://localhost:8001/admin/ http://localhost:8003/leningaanvragen/)
+  [[ "${OPENFORMS_OFF}" -eq 1 ]] && urls=(http://localhost:8001/admin/)
+  for url in "${urls[@]}"; do
     until curl -sS -o /dev/null --max-time 5 -w '%{http_code}' "${url}" 2>/dev/null | grep -q '^[23]'; do
       [[ "${waited}" -ge 1800 ]] && die "${url} does not answer after ${waited}s"
       sleep 5; waited=$((waited + 5))

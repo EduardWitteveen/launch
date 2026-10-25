@@ -16,6 +16,8 @@
 # Inputs come from the environment, set by the host from the manifest:
 #   TZ_REPO TZ_REV TZ_OVERRIDE DOCKER_URL DOCKER_SHA COMPOSE_URL COMPOSE_SHA
 #   TZ_SWF_URL TZ_SWF_SHA (optional: Súdwest-Fryslân's case types, #286)
+#   LAUNCH_OPTIONS_OFF (Launch's "Aanpassen"): a comma list; "demo" there
+#   leaves out the demo cases. Not set: everything on.
 #
 # Experimental and unofficial. Not for production.
 # SPDX-License-Identifier: EUPL-1.2
@@ -458,9 +460,12 @@ PY
 # Demo data (demo.py): a few made-up cases of Súdwest-Fryslân's case types,
 # with a status, an applicant and documents, so there is something to try
 # besides the configuration. Once (demo.done); should any of it fail, Tezza
-# works without them and the next start tries again.
+# works without them and the next start tries again. Switched off at
+# Aanpassen: not made; cases an earlier start made stay (they are ordinary
+# cases in Open Zaak and Alfresco, and taking them out is not simple).
 phase_demo() {
   log "Demo data: made-up cases of Súdwest-Fryslân's case types"
+  if [[ ",${LAUNCH_OPTIONS_OFF:-}," == *",demo,"* ]]; then info "overgeslagen (uitgezet bij Aanpassen)"; return 0; fi
   if [[ "${DRY_RUN}" -eq 1 ]]; then echo "DRY-RUN: python3 demo.py"; return 0; fi
   if [[ -f "${STATE_DIR}/demo.done" ]]; then info "made before"; return 0; fi
   if python3 "${STATE_DIR}/demo.py"; then

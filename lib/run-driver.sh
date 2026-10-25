@@ -13,6 +13,9 @@
 #   run.sh start <progress-file>   the phases one by one, with a progress file
 #   run.sh stop                    stop the environment's containers
 #
+# deploy.sh gets LAUNCH_OPTIONS_ON / LAUNCH_OPTIONS_OFF (environment.json's
+# "options", chosen at Aanpassen) and honours them on every start.
+#
 # SPDX-License-Identifier: EUPL-1.2
 set -u
 here="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
@@ -55,6 +58,17 @@ if [[ "${1:-}" == stop ]]; then
 fi
 [[ "${1:-}" == start && -n "${2:-}" ]] || { echo "usage: run.sh start <progress-file> | stop" >&2; exit 2; }
 prog="$2"
+# The choices of "Aanpassen" (docs/launcher-behaviour.md 1C6): launch passes
+# LAUNCH_OPTIONS_ON and LAUNCH_OPTIONS_OFF, comma lists of environment.json's
+# option ids, to deploy.sh through this process. A caller that passes neither
+# gets environment.json's defaults (a data set whose part is off is off too).
+if [[ -z "${LAUNCH_OPTIONS_ON+x}${LAUNCH_OPTIONS_OFF+x}" ]]; then
+  opts="$(cfg "(lambda o, poff: ','.join(x['id'] for x in o if x.get('default', True) and not set(x.get('needs', [])) & poff) + '|' + ','.join(x['id'] for x in o if not (x.get('default', True) and not set(x.get('needs', [])) & poff)))(e.get('options', []), {x['id'] for x in e.get('options', []) if x.get('kind') == 'part' and not x.get('default', True)})")"
+  export LAUNCH_OPTIONS_ON="${opts%%|*}" LAUNCH_OPTIONS_OFF="${opts#*|}"
+fi
+export LAUNCH_OPTIONS_ON="${LAUNCH_OPTIONS_ON:-}" LAUNCH_OPTIONS_OFF="${LAUNCH_OPTIONS_OFF:-}"
+# option_off ID: switched off at Aanpassen (for prepare(), e.g. a step label).
+option_off() { [[ ",${LAUNCH_OPTIONS_OFF}," == *",$1,"* ]]; }
 prepare
 
 since=$(date +%s)
@@ -69,6 +83,7 @@ write() { # write INDEX [ERROR]
   mv -f "${prog}.new" "${prog}"
 }
 : > "${log}"
+echo "==> options on: ${LAUNCH_OPTIONS_ON:-(none)}; off: ${LAUNCH_OPTIONS_OFF:-(none)}" >> "${log}"
 for i in "${!STEP_NAMES[@]}"; do
   started=$(date +%s); write "$i"
   ( while sleep 5; do write "$i"; done ) & ticker=$!

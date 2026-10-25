@@ -99,6 +99,18 @@
   .parts .plogin { color: var(--muted); font-size: .85rem; }
   .parts-head { font-size: .9rem; font-weight: 600; margin: 0 0 6px; }
   .log summary { cursor: pointer; color: var(--accent); font-size: .9rem; }
+  /* Aanpassen (1C6) and what differs from the defaults (1C7). */
+  .custom { margin: 0; font-size: .9rem; color: var(--muted); }
+  .custom b { color: var(--text); font-weight: 600; }
+  .options { font-size: .9rem; }
+  .options > summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .opt-head { margin: 10px 0 4px; font-weight: 600; font-size: .85rem; color: var(--muted); }
+  .opt { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; cursor: pointer; }
+  .opt input { margin: 3px 0 0; flex: none; width: 16px; height: 16px; accent-color: var(--accent); cursor: inherit; }
+  .opt span { display: flex; flex-direction: column; }
+  .opt small { color: var(--muted); font-size: .8rem; line-height: 1.35; }
+  .opt.off { cursor: default; opacity: .55; }
+  body.dead main input { pointer-events: none; }
   .log pre { margin: 6px 0 0; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
              font-size: .75rem; line-height: 1.4; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
   /* Progress while an environment starts (#232): the whole start on top,
@@ -269,6 +281,30 @@ function act(verb, env) {
   });
 }
 
+// Aanpassen (1C6): a choice is a setting, not a phase change, so no grey
+// page; the next state shows what the Launcher saved. Not possible now (409)
+// or no answer: the message on top and the choices as the Launcher has them.
+async function setOption(env, opt, on) {
+  let msg = "";
+  try {
+    const r = await fetch(`/api/options/${env.id}`, {
+      method: "POST", headers: { "X-Launcher-Token": TOKEN, "Content-Type": "application/json" },
+      body: JSON.stringify({ [opt.id]: on }) });
+    let j = {};
+    try { j = await r.json(); } catch (e) { /* no JSON */ }
+    if (!r.ok || !j.ok) msg = j.message || "Dat lukte nu niet.";
+  } catch (e) {
+    msg = "De Launcher antwoordt niet. Probeer het zo opnieuw.";
+  }
+  if (msg) {
+    topMessage = msg;
+    topMessageAt = nowLocal();
+    render();
+    return;
+  }
+  refresh();
+}
+
 function cancelAuto() { post("/api/autostart/cancel", "Het automatisch starten wordt uitgezet…"); }
 
 function cycleAct(verb) {
@@ -387,6 +423,54 @@ function partsList(parts, head) {
 }
 const mainParts = env => [{ title: env.title, url: env.url, login: env.login }, ...(env.links || [])];
 
+// BEGIN options
+// The choices of an environment (1C6, 1C7): parts first, then data. A data
+// set whose part is off is off too, and cannot be switched on.
+const optName = o => (o.title || o.id).split(/ \(|: /)[0];
+const optBlocked = (o, opts) => o.kind === "data" &&
+  (o.needs || []).some(n => opts.some(p => p.id === n && !p.on));
+
+// 1C7: "Aangepast: zonder Klantcontact, met …"; a data set that is off only
+// because its part is off is not named again.
+function customLine(env) {
+  const opts = env.options || [];
+  const without = opts.filter(o => !o.on && o.default !== false && !optBlocked(o, opts)).map(optName);
+  const with_ = opts.filter(o => o.on && o.default === false).map(optName);
+  if (!without.length && !with_.length) return null;
+  const said = [without.length ? "zonder " + without.join(", ") : "", with_.length ? "met " + with_.join(", ") : ""];
+  return el("p", { class: "custom" }, el("b", {}, "Aangepast: "), said.filter(Boolean).join("; "));
+}
+
+function optionsBlock(env) {
+  const opts = env.options || [];
+  if (!opts.length) return null;
+  const row = o => {
+    const blocked = optBlocked(o, opts);
+    const box = el("input", { type: "checkbox", "data-opt": o.id, "data-needs": (o.needs || []).join(","),
+                              disabled: blocked, onchange: ev => {
+      // At once on the page: the data sets that need this part follow.
+      if (o.kind === "part") {
+        for (const d of ev.target.closest(".options").querySelectorAll("input[data-needs]")) {
+          if (!d.dataset.needs.split(",").includes(o.id)) continue;
+          d.disabled = !ev.target.checked;
+          if (!ev.target.checked) d.checked = false;
+          d.closest(".opt").classList.toggle("off", d.disabled);
+        }
+      }
+      setOption(env, o, ev.target.checked);
+    } });
+    box.checked = !!o.on && !blocked;
+    return el("label", { class: "opt" + (blocked ? " off" : "") }, box,
+      el("span", {}, o.title || o.id, o.about ? el("small", {}, o.about) : null));
+  };
+  const parts = opts.filter(o => o.kind === "part"), data = opts.filter(o => o.kind !== "part");
+  const both = parts.length && data.length;
+  return el("details", { class: "options" }, el("summary", {}, "Aanpassen"),
+    both ? el("p", { class: "opt-head" }, "Onderdelen") : null, ...parts.map(row),
+    both ? el("p", { class: "opt-head" }, "Demodata") : null, ...data.map(row));
+}
+// END options
+
 // The state line on the card: what phase it is in.
 function stateLine(cls, text) {
   return el("div", { class: "state " + cls }, el("span", { class: "dot" }), text);
@@ -427,6 +511,8 @@ function card(env, mode) {
     }
     if (env.ended) kids.push(el("div", { class: "warn" }, el("p", {}, env.ended.text)));
     if (env.autostart && !env.precondition) kids.push(autoBlock(env.autostart.at));
+    // 1C6, 1C7: not on a grey card (another one runs) or one that cannot run.
+    if (mode === "free" && !env.precondition) kids.push(customLine(env), optionsBlock(env));
     btn("Starten", "start", true, !!env.precondition);
   } else if (ph === "checking") {
     kids.push(stateLine("busy", "Bezig met controleren…"));
@@ -589,8 +675,12 @@ function render() {
     return "free";
   };
   cyc.replaceChildren(...[cycleBox(c, active.length > 0)].filter(Boolean));
+  // A choice just clicked keeps the keyboard focus across the redraw.
+  const f = document.activeElement;
+  const focusOpt = f && f.dataset && f.dataset.opt ? [f.closest(".card")?.dataset.id, f.dataset.opt] : null;
   grid.replaceChildren(...(S.envs.length ? S.envs.map(e => card(e, modeOf(e))) : [el("p", {}, "Er zijn geen omgevingen.")]));
   for (const d of grid.querySelectorAll("details")) if (opened.has(key(d))) d.open = true;
+  if (focusOpt) grid.querySelector(`.card[data-id="${focusOpt[0]}"] input[data-opt="${focusOpt[1]}"]`)?.focus();
   tick();
 }
 

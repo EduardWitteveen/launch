@@ -346,6 +346,20 @@
   "needs": {
     "memory_gib": 12
   },
+  "options": [
+    {
+      "id": "demo",
+      "kind": "data",
+      "title": {
+        "nl": "Demozaken: vijf verzonnen zaken van Súdwest-Fryslân"
+      },
+      "about": {
+        "nl": "Twee omgevingsvergunningen, twee evenementen en een bezwaar, met aanvrager en documenten."
+      },
+      "default": true,
+      "needs": []
+    }
+  ],
   "checks": [
     {
       "id": "identity",
