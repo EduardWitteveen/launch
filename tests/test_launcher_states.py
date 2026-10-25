@@ -311,6 +311,127 @@ class Actions(unittest.TestCase):
             self.assertIn(k, p)
         self.assertTrue(p["cycle_here"])
         self.assertFalse([k for k in p if k.startswith("_")])
+        self.assertEqual(p["options"], [])
+
+    def test_public_texts_per_language(self):
+        env = {"title": {"nl": "Tezza", "en": "Tezza (en)"}, "summary": {"en": "Only English"},
+               "links": [{"title": {"nl": "Beheer"}, "url": "u"}]}
+        p = L.public(rec_in("stopped"), env)
+        self.assertEqual((p["title"], p["summary"], p["links"][0]["title"]), ("Tezza", "Only English", "Beheer"))
+
+
+NC = {"title": "Nextcloud", "options": [
+    {"id": "pipelinq", "kind": "part", "title": {"nl": "Klantcontact (Pipelinq)", "en": "Customer contact"},
+     "about": {"nl": "Contactmomenten"}, "default": True},
+    {"id": "portaliq", "kind": "part", "title": "Portaal", "default": False},
+    {"id": "demo", "kind": "data", "title": "Demozaken", "default": True, "needs": ["pipelinq"]},
+    {"id": "Bad Id", "kind": "part", "title": "x"}]}
+
+
+class Options(unittest.TestCase):
+    def test_view_defaults_in_dutch(self):
+        v = L.options_view(NC, None)
+        self.assertEqual([(o["id"], o["on"]) for o in v], [("pipelinq", True), ("portaliq", False), ("demo", True)])
+        self.assertEqual(v[0], {"id": "pipelinq", "kind": "part", "title": "Klantcontact (Pipelinq)",
+                                "about": "Contactmomenten", "needs": [], "default": True, "on": True})
+        self.assertEqual(v[2]["needs"], ["pipelinq"])
+        self.assertEqual(L.public(rec_in("stopped"), NC, saved={"portaliq": True})["options"][1]["on"], True)
+
+    def test_view_applies_needs(self):
+        v = L.options_view(NC, {"pipelinq": False, "demo": True})
+        self.assertEqual([(o["id"], o["on"]) for o in v], [("pipelinq", False), ("portaliq", False), ("demo", False)])
+
+    def test_change_keeps_only_differences(self):
+        self.assertEqual(L.change_options(NC, None, {"portaliq": True}), ({"portaliq": True}, None))
+        self.assertEqual(L.change_options(NC, {"portaliq": True}, {"portaliq": False}), ({}, None))
+        # A part off takes its data set along when shown and used, but only the part is stored...
+        self.assertEqual(L.change_options(NC, None, {"pipelinq": False}), ({"pipelinq": False}, None))
+        self.assertEqual([o["on"] for o in L.options_view(NC, {"pipelinq": False}) if o["id"] == "demo"], [False])
+        # ... so the data set comes back with its part.
+        self.assertEqual(L.change_options(NC, {"pipelinq": False}, {"pipelinq": True}), ({}, None))
+        self.assertEqual([o["on"] for o in L.options_view(NC, {}) if o["id"] == "demo"], [True])
+        # A data set switched off by the person stays off when its part comes back.
+        self.assertEqual(L.change_options(NC, {"pipelinq": False, "demo": False}, {"pipelinq": True}),
+                         ({"demo": False}, None))
+
+    def test_change_refuses_wrong_bodies(self):
+        for body in (None, {}, [], {"nosuch": True}, {"demo": "yes"}, {"Bad Id": True}):
+            new, why = L.change_options(NC, None, body)
+            self.assertIsNone(new, body)
+            self.assertTrue(why, body)
+
+    def test_flags(self):
+        self.assertEqual(L.option_flags(NC, None), [])
+        self.assertEqual(L.option_flags(NC, {"portaliq": True, "pipelinq": False}),
+                         ["--with", "portaliq", "--without", "pipelinq,demo"])
+        self.assertEqual(L.option_flags({"title": "x"}, {"gone": False}), [])  # forgotten options pass nothing
+
+    def test_txt(self):
+        self.assertEqual(L.txt("a"), "a")
+        self.assertEqual(L.txt({"en": "b"}), "b")
+        self.assertEqual(L.txt({"nl": "a", "en": "b"}), "a")
+        self.assertEqual(L.txt(None), "")
+
+
+class OptionsEndpoint(unittest.TestCase):
+    """POST /api/options/<id> without the server: user_options() on the module's state."""
+
+    def setUp(self):
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        old = (L.STATE, dict(L.CATALOG), dict(L.RECS), dict(L.CHOICES))
+
+        def restore():
+            L.STATE = old[0]
+            for d, o in ((L.CATALOG, old[1]), (L.RECS, old[2]), (L.CHOICES, old[3])):
+                d.clear()
+                d.update(o)
+        self.addCleanup(restore)
+        L.STATE = tmp.name
+        L.CATALOG.clear()
+        L.CATALOG["nc"] = NC
+        L.RECS.clear()
+        L.RECS["nc"] = rec = L.new_record("nc")
+        rec["phase"] = "stopped"
+        L.CHOICES.clear()
+
+    def test_saves_and_shows(self):
+        self.assertEqual(L.user_options("nc", {"pipelinq": False}), (200, {"ok": True}))
+        with open(L.choices_path(), encoding="utf-8") as f:
+            self.assertEqual(L.json.load(f), {"nc": {"pipelinq": False}})
+        self.assertEqual(L.load_choices(), {"nc": {"pipelinq": False}})
+        st = [e for e in L.state()["envs"] if e["id"] == "nc"][0]
+        self.assertEqual([o["on"] for o in st["options"]], [False, False, False])
+        self.assertEqual(L.user_options("nc", {"pipelinq": True, "demo": True}), (200, {"ok": True}))
+        self.assertEqual(L.load_choices(), {})
+
+    def test_only_while_stopped(self):
+        for phase in ("ready", "starting", "checking", "problem", "unknown"):
+            L.RECS["nc"]["phase"] = phase
+            code, body = L.user_options("nc", {"portaliq": True})
+            self.assertEqual(code, 409)
+            self.assertIn("niet draait", body["message"])
+        self.assertEqual(L.user_options("nosuch", {"a": True})[0], 404)
+        L.RECS["nc"]["phase"] = "stopped"
+        self.assertEqual(L.user_options("nc", {"nosuch": True})[0], 400)
+
+    def test_user_start_passes_the_choices_round_does_not(self):
+        L.CHOICES["nc"] = {"portaliq": True}
+        calls = []
+
+        def fake_run(args, timeout=60):
+            calls.append(args)
+            return 0, "", ""
+        orig = L.run
+        L.run = fake_run
+        try:
+            L.flow_run_start("nc", L.RECS["nc"]["gen"], "user")
+            L.flow_run_start("nc", L.RECS["nc"]["gen"], "cycle")
+            L.flow_run_start("nc", L.RECS["nc"]["gen"], "auto")
+        finally:
+            L.run = orig
+        self.assertEqual(calls, [["start", "nc", "--with", "portaliq"], ["start", "nc"], ["start", "nc"]])
 
 
 if __name__ == "__main__":

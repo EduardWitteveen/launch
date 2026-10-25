@@ -1,4 +1,5 @@
-"""Unit tests for launch.py: the status facts, the check items and what a start does.
+"""Unit tests for launch.py: the command line, the status facts, the check items,
+the choices, the language and what a start does.
 No network, Docker or real environments: subprocess, sockets and urllib are faked.
 
   python -m unittest tests/test_launch.py
@@ -6,6 +7,7 @@ No network, Docker or real environments: subprocess, sockets and urllib are fake
 SPDX-License-Identifier: EUPL-1.2
 """
 import io
+import json
 import os
 import socket
 import subprocess
@@ -13,7 +15,7 @@ import sys
 import tempfile
 import unittest
 import urllib.error
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,6 +30,11 @@ HC = {"id": "haalcentraal", "title": "Haal Centraal", "url": "http://localhost:1
       "needs": {"memory_gib": 1}}
 MB = {"id": "mijn-bureau", "title": "Mijn Bureau", "url": "https://bureaublad.dawo.internal",
       "needs": {"memory_gib": 16, "platform": "dawo-usb"}}
+NC = {"id": "nc", "title": "Nextcloud", "url": "http://localhost:8609/", "options": [
+    {"id": "pipelinq", "kind": "part", "title": {"nl": "Klantcontact"}, "default": True},
+    {"id": "portaliq", "kind": "part", "title": "Portaal", "default": False},
+    {"id": "demo", "kind": "data", "title": "Demozaken", "default": True, "needs": ["pipelinq"]},
+    {"id": "more", "kind": "data", "title": "Meer", "needs": ["demo"]}]}
 
 
 def ran(rc=0, out="", err=""):
@@ -37,7 +44,7 @@ def ran(rc=0, out="", err=""):
 class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        env = mock.patch.dict(os.environ, {"LAUNCH_STATE": self.tmp.name})
+        env = mock.patch.dict(os.environ, {"LAUNCH_STATE": self.tmp.name, "LAUNCH_LANG": "nl"})
         env.start()
         self.addCleanup(env.stop)
         self.addCleanup(self.tmp.cleanup)
@@ -45,6 +52,162 @@ class Base(unittest.TestCase):
         launch._CONTAINERS = launch._UNSET
         self.addCleanup(setattr, launch, "_CONTAINERS", launch._UNSET)
         self.addCleanup(setattr, launch, "_DOCKER", None)
+        launch.LANG = "nl"
+        self.addCleanup(setattr, launch, "LANG", "en")
+
+    def main(self, *argv):
+        """launch.main(argv) -> (exit code, stdout, stderr); argparse's own exit counts too."""
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            try:
+                rc = launch.main(list(argv))
+            except SystemExit as e:
+                rc = e.code
+        return rc, out.getvalue(), err.getvalue()
+
+
+class CommandLine(Base):
+    def test_help_lists_the_commands_not_the_supervisor(self):
+        rc, out, _ = self.main("--help")
+        self.assertEqual(rc, 0)
+        for c in ("list", "status", "check", "fix", "start", "stop", "exit codes"):
+            self.assertIn(c, out)
+        self.assertNotIn("supervise", out)
+
+    def test_command_help_and_version(self):
+        rc, out, _ = self.main("start", "--help")
+        self.assertEqual(rc, 0)
+        self.assertIn("--with", out)
+        self.assertIn("--wait", out)
+        rc, out, _ = self.main("--version")
+        self.assertEqual((rc, out.strip()), (0, f"launch {launch.VERSION}"))
+        self.assertRegex(launch.VERSION, r"^\d+\.\d+\.\d+(-rc\.\d+)?$")
+
+    def test_old_flags_are_wrong_use(self):
+        for argv in ([], ["--list"], ["--status"], ["--check", "tezza"], ["--fix", "tezza"], ["--stop", "tezza"],
+                     ["tezza"], ["start", "tezza", "--yes"], ["check", "tezza", "--lang", "de"]):
+            self.assertEqual(self.main(*argv)[0], 2, argv)
+
+    def test_parsing(self):
+        a = launch.parser().parse_args(["start", "nc", "--with", "a,b", "--with", "c", "--without", "d", "--wait"])
+        self.assertEqual((a.command, a.id, launch.id_list(a.on), launch.id_list(a.off), a.wait),
+                         ("start", "nc", ["a", "b", "c"], ["d"], True))
+        a = launch.parser().parse_args(["status"])
+        self.assertEqual((a.command, a.id, a.json), ("status", None, False))
+        a = launch.parser().parse_args(["check", "tezza", "--json", "--lang", "en"])
+        self.assertEqual((a.id, a.json, a.lang), ("tezza", True, "en"))
+
+    def test_unknown_environment_is_2(self):
+        with mock.patch.object(launch, "catalog", return_value=[TEZZA, HC]):
+            for argv in (["start", "nosuch"], ["stop", "nosuch"], ["check", "nosuch"], ["fix", "nosuch"],
+                         ["status", "nosuch"]):
+                rc, out, err = self.main(*argv)
+                self.assertEqual(rc, 2, argv)
+                self.assertIn("onbekende omgeving 'nosuch'. Kies uit: tezza, haalcentraal", err)
+
+    def test_list_passes_the_options_unchanged(self):
+        with mock.patch.object(launch, "catalog", return_value=[NC]):
+            rc, out, _ = self.main("list", "--json")
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out), {"schema": 1, "environments": [NC]})
+
+    def test_status_of_one_is_a_list_of_one(self):
+        st = {"id": "haalcentraal", "state": "stopped"}
+        with mock.patch.object(launch, "catalog", return_value=[TEZZA, HC]), \
+                mock.patch.object(launch, "status_of", return_value=st) as status:
+            rc, out, _ = self.main("status", "haalcentraal", "--json")
+        self.assertEqual((rc, json.loads(out)), (0, [st]))
+        status.assert_called_once_with(HC)
+
+
+class Language(Base):
+    def test_order(self):
+        with mock.patch.object(launch, "os_lang", return_value="nl"):
+            self.assertEqual(launch.choose_lang("en"), "en")
+            with mock.patch.dict(os.environ, {"LAUNCH_LANG": "en"}):
+                self.assertEqual(launch.choose_lang(), "en")
+            with mock.patch.dict(os.environ, {"LAUNCH_LANG": "fr"}):
+                self.assertEqual(launch.choose_lang(), "nl")
+            with mock.patch.dict(os.environ, {"LAUNCH_LANG": ""}):
+                self.assertEqual(launch.choose_lang(), "nl")
+
+    def test_os_lang_elsewhere(self):
+        clean = {k: "" for k in ("LC_ALL", "LC_MESSAGES", "LANG")}
+        with mock.patch.object(launch, "WINDOWS", False):
+            for env, want in (({"LANG": "nl_NL.UTF-8"}, "nl"), ({"LC_ALL": "en_US.UTF-8", "LANG": "nl_NL"}, "en"),
+                              ({"LANG": "de_DE"}, "en"), ({}, "en")):
+                with mock.patch.dict(os.environ, {**clean, **env}):
+                    self.assertEqual(launch.os_lang(), want, env)
+
+    @unittest.skipUnless(os.name == "nt", "Windows only")
+    def test_os_lang_windows(self):
+        import ctypes
+        for langid, want in ((0x0413, "nl"), (0x0813, "nl"), (0x0409, "en")):
+            with mock.patch.object(ctypes.windll.kernel32, "GetUserDefaultUILanguage", return_value=langid):
+                self.assertEqual(launch.os_lang(), want)
+
+    def test_every_message_in_both(self):
+        for key, t in launch.MESSAGES.items():
+            self.assertEqual(set(t), {"nl", "en"}, key)
+
+    def test_pick(self):
+        self.assertEqual(launch.pick("x"), "x")
+        self.assertEqual(launch.pick({"nl": "a", "en": "b"}, "en"), "b")
+        self.assertEqual(launch.pick({"nl": "a"}, "en"), "a")
+        self.assertEqual(launch.pick({"fy": "c"}, "en"), "c")
+        self.assertEqual(launch.pick(None), "")
+
+
+class Options(Base):
+    def test_defaults(self):
+        self.assertEqual(launch.resolve_options(NC), {"on": ["pipelinq", "demo", "more"], "off": ["portaliq"]})
+        self.assertEqual(launch.resolve_options(TEZZA), {"on": [], "off": []})
+
+    def test_with_without_and_needs(self):
+        self.assertEqual(launch.resolve_options(NC, ["portaliq"], ["more"]),
+                         {"on": ["pipelinq", "portaliq", "demo"], "off": ["more"]})
+        # Off goes down the chain: pipelinq -> demo -> more.
+        self.assertEqual(launch.resolve_options(NC, (), ["pipelinq"]),
+                         {"on": [], "off": ["pipelinq", "portaliq", "demo", "more"]})
+        self.assertEqual(launch.resolve_options(NC, ["demo"], ["pipelinq"])["off"],
+                         ["pipelinq", "portaliq", "demo", "more"])
+
+    def test_wrong_use(self):
+        with self.assertRaises(launch.Usage) as e:
+            launch.resolve_options(NC, ["nosuch"])
+        self.assertIn("Kies uit: pipelinq, portaliq, demo, more", str(e.exception))
+        with self.assertRaises(launch.Usage):
+            launch.resolve_options(NC, ["demo"], ["demo"])
+        with self.assertRaises(launch.Usage):
+            launch.resolve_options(TEZZA, (), ["demo"])
+
+    def test_start_with_an_unknown_option_is_2_before_anything(self):
+        with mock.patch.object(launch, "catalog", return_value=[NC]), \
+                mock.patch.object(launch, "check") as check, \
+                mock.patch.object(launch, "spawn_supervisor") as spawn:
+            rc, _, err = self.main("start", "nc", "--without", "nosuch")
+        self.assertEqual(rc, 2)
+        self.assertIn("onbekende keuze 'nosuch'", err)
+        check.assert_not_called()
+        spawn.assert_not_called()
+
+    def test_start_stores_them_and_the_supervisor_passes_them(self):
+        with mock.patch.object(launch, "catalog", return_value=[NC]), \
+                mock.patch.object(launch, "check", return_value=[]), \
+                mock.patch.object(launch, "running_pid", return_value=0), \
+                mock.patch.object(launch, "spawn_supervisor") as spawn:
+            rc, _, _ = self.main("start", "nc", "--without", "demo", "--with", "portaliq")
+        self.assertEqual(rc, 0)
+        spawn.assert_called_once_with("nc")
+        with open(launch.paths("nc")["options"], encoding="utf-8") as f:
+            self.assertEqual(json.load(f), {"on": ["pipelinq", "portaliq"], "off": ["demo", "more"]})
+        with mock.patch.object(launch, "run_env", return_value=0) as run_env:
+            launch.supervise("nc")
+        run_env.assert_called_once_with("nc", "start", {"LAUNCH_OPTIONS_ON": "pipelinq,portaliq",
+                                                        "LAUNCH_OPTIONS_OFF": "demo,more"})
+
+    def test_no_file_no_variables(self):
+        self.assertEqual(launch.options_env("nc"), {})
 
 
 class Answers(Base):
@@ -152,11 +315,14 @@ class Status(Base):
     def test_human_unknown(self):
         launch._DOCKER = {"up": None, "mem": None}
         launch._CONTAINERS = None
-        f = io.StringIO()
         with mock.patch.object(launch, "catalog", return_value=[TEZZA]), \
-                mock.patch.object(launch, "answers", return_value=None), redirect_stdout(f):
-            self.assertEqual(launch.main(["--status"]), 0)
-        self.assertEqual(f.getvalue().strip(), "Tezza: onbekend")
+                mock.patch.object(launch, "answers", return_value=None):
+            rc, out, _ = self.main("status")
+        self.assertEqual((rc, out.strip()), (0, "Tezza: onbekend"))
+        with mock.patch.dict(os.environ, {"LAUNCH_LANG": "en"}), \
+                mock.patch.object(launch, "catalog", return_value=[TEZZA]), \
+                mock.patch.object(launch, "answers", return_value=None):
+            self.assertEqual(self.main("status")[1].strip(), "Tezza: unknown")
 
 
 class Check(Base):
@@ -198,6 +364,7 @@ class Check(Base):
                 mock.patch.object(launch, "catalog", return_value=[TEZZA]):
             got = launch.busy_ports(TEZZA)
         self.assertEqual([(i["code"], i["data"]) for i in got], [("port-in-use", {"ports": [8082], "holder": "pg"})])
+        self.assertTrue(got[0]["text"].startswith("Poort 8082 is bezet door de container 'pg'"))
         launch._CONTAINERS = [("t", "tezza-packaging", {8082})]  # its own: not a problem
         with mock.patch.object(launch, "listens", return_value=True), \
                 mock.patch.object(launch, "catalog", return_value=[TEZZA]):
@@ -205,17 +372,32 @@ class Check(Base):
 
     def test_json_and_exit(self):
         item = {"code": "runtime-down", "kind": "problem", "text": "Docker draait niet."}
-        for items, rc in (([], 0), ([item], 1)):
-            f = io.StringIO()
+        pre = {"code": "platform", "kind": "precondition", "text": "DAWO"}
+        for items, rc in (([], 0), ([item], 3), ([pre, item], 4)):
             with mock.patch.object(launch, "env_of", return_value=TEZZA), \
-                    mock.patch.object(launch, "check", return_value=items), redirect_stdout(f):
-                self.assertEqual(launch.main(["--check", "tezza", "--json"]), rc)
-            self.assertEqual(launch.json.loads(f.getvalue()), {"ok": not items, "items": items})
+                    mock.patch.object(launch, "check", return_value=items):
+                got, out, _ = self.main("check", "tezza", "--json")
+            self.assertEqual(got, rc)
+            self.assertEqual(json.loads(out), {"ok": not items, "items": items})
+
+    def test_texts_in_english_and_from_a_dict(self):
+        env = dict(TEZZA, title={"nl": "Tezza NL", "en": "Tezza EN"},
+                   checks=[{"id": "x", "problem": {"nl": "kapot", "en": "broken"}}])
+        launch.LANG = "en"
+        got = self.items(env, docker_mem=4.0, failing=env["checks"])
+        self.assertEqual(got[0]["text"], "Docker has 4 GB of memory; Tezza EN needs about 12 "
+                                         "(see the README: giving Docker more memory).")
+        self.assertEqual(got[1]["text"], "broken")
+
+    def test_lang_flag(self):
+        with mock.patch.object(launch, "env_of", return_value=TEZZA), \
+                mock.patch.object(launch, "check", return_value=[]):
+            self.assertEqual(self.main("check", "tezza", "--lang", "en")[1].strip(), "All is well.")
+            self.assertEqual(self.main("check", "tezza", "--lang", "nl")[1].strip(), "Alles in orde.")
 
 
 class Start(Base):
-    def start(self, items=(), others=(), pid=0, argv=("tezza",)):
-        f = io.StringIO()
+    def start(self, items=(), others=(), pid=0, argv=("start", "tezza")):
         with mock.patch.object(launch, "env_of", return_value=TEZZA), \
                 mock.patch.object(launch, "catalog", return_value=[TEZZA, HC]), \
                 mock.patch.object(launch, "check", return_value=list(items)), \
@@ -223,10 +405,10 @@ class Start(Base):
                 mock.patch.object(launch, "status_of", side_effect=lambda e: dict(others)[e["id"]]), \
                 mock.patch.object(launch, "fix") as fix, \
                 mock.patch.object(launch, "cmd_stop", return_value=0) as stop, \
-                mock.patch.object(launch, "spawn_supervisor") as spawn, redirect_stdout(f):
-            rc = launch.main(list(argv))
+                mock.patch.object(launch, "spawn_supervisor") as spawn:
+            rc, out, _ = self.main(*argv)
         fix.assert_not_called()  # a start never fixes
-        return rc, f.getvalue(), spawn, stop
+        return rc, out, spawn, stop
 
     STOPPED = {"haalcentraal": {"state": "stopped", "containers": False}}
 
@@ -243,25 +425,24 @@ class Start(Base):
         self.assertIn("te weinig", out)
         spawn.assert_not_called()
 
-    def test_problem_is_3_also_with_yes(self):
+    def test_problem_is_3(self):
         items = [{"code": "check:identity", "kind": "fixable", "text": "identity onbekend", "fix": "hosts"}]
-        rc, out, spawn, _ = self.start(items, argv=("tezza", "--yes"))
+        rc, out, spawn, _ = self.start(items)
         self.assertEqual(rc, 3)
         self.assertIn("identity onbekend", out)
-        self.assertIn("Oplossen: python launch.py --fix tezza", out)
+        self.assertIn("Oplossen: python launch.py fix tezza", out)
         spawn.assert_not_called()
 
     def test_problem_without_fix_names_no_fix(self):
         rc, out, _, _ = self.start([{"code": "runtime-down", "kind": "problem", "text": "Docker draait niet."}])
         self.assertEqual(rc, 3)
-        self.assertNotIn("--fix", out)
+        self.assertNotIn(" fix ", out)
 
     def test_other_running_is_5_and_not_stopped(self):
         for state in ("starting", "ready", "failed"):
             rc, out, spawn, stop = self.start(others={"haalcentraal": {"state": state, "containers": True}})
             self.assertEqual(rc, 5)
-            self.assertIn("De Haal Centraal-omgeving draait; stop die eerst (python launch.py --stop haalcentraal).",
-                          out)
+            self.assertIn("Haal Centraal draait; stop die eerst (python launch.py stop haalcentraal).", out)
             spawn.assert_not_called()
             stop.assert_not_called()
 
@@ -275,6 +456,40 @@ class Start(Base):
         self.assertEqual(rc, 0)
         self.assertIn("wordt al gestart", out)
         spawn.assert_not_called()
+
+
+class Wait(Base):
+    def wait(self, pids, failed=False, states=("ready",)):
+        if failed:
+            open(launch.paths("tezza")["failed"], "w").close()
+        with mock.patch.object(launch, "running_pid", side_effect=list(pids)), \
+                mock.patch.object(launch, "status_of", side_effect=[{"state": s} for s in states]), \
+                mock.patch.object(launch, "progress_of", return_value={"step": 2, "steps": 5, "label": "Ophalen"}), \
+                mock.patch.object(launch.time, "sleep"), redirect_stdout(io.StringIO()) as out:
+            return launch.wait_for(TEZZA), out.getvalue()
+
+    def test_ready_is_0(self):
+        rc, out = self.wait([42, 42, 0])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.count("Stap 2 van 5: Ophalen"), 1)  # a step once
+        self.assertIn("Tezza is klaar: http://localhost:8082/", out)
+
+    def test_unknown_then_ready_is_0(self):
+        self.assertEqual(self.wait([0], states=("unknown", "ready"))[0], 0)
+
+    def test_failed_is_1(self):
+        self.assertEqual(self.wait([42, 0], failed=True, states=())[0], 1)
+        self.assertEqual(self.wait([0], states=("stopped", "stopped", "stopped"))[0], 1)
+
+    def test_start_wait(self):
+        with mock.patch.object(launch, "env_of", return_value=TEZZA), \
+                mock.patch.object(launch, "check", return_value=[]), \
+                mock.patch.object(launch, "catalog", return_value=[TEZZA]), \
+                mock.patch.object(launch, "running_pid", return_value=0), \
+                mock.patch.object(launch, "spawn_supervisor"), \
+                mock.patch.object(launch, "wait_for", return_value=1) as wait_for:
+            self.assertEqual(self.main("start", "tezza", "--wait")[0], 1)
+        wait_for.assert_called_once_with(TEZZA)
 
 
 class Stop(Base):

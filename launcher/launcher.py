@@ -11,7 +11,7 @@ workplace. Its behaviour is docs/launcher-behaviour.md; the code follows it.
                [--cycle-ready-timeout 5400] [--cycle-report FILE]
                [--cycle-persist-units ON-UNIT OFF-UNIT]]
 
-The state (#284): a background thread measures (`launch --status --json`
+The state (#284): a background thread measures (`launch status --json`
 every few seconds, the catalogue and the preconditions every minute) and keeps
 a record per environment with its phase. The page's GET /api/state answers at
 once from that record; a request never runs `launch`. A measurement that
@@ -19,6 +19,14 @@ fails is "unknown", and unknown changes nothing: the phase changes by an
 action, or when two measurements in a row agree (rule 2). The transitions are
 pure functions (observe(), check_outcome(), ...) so tests can run them with
 made-up facts. Every transition goes to stderr.
+
+Choices (docs §3.1, 1C6): an environment's "options" (parts and demo data)
+are in /api/state with the remembered choice; POST /api/options/<id> changes
+them while it is stopped, kept in <state>/choices.json. A start by a person
+passes them to `launch start` as --with/--without; the round and the
+automatic start use the defaults.
+
+Every `launch` call gets LAUNCH_LANG=nl: the page is in Dutch.
 
 Actions (POST /api/<verb>/<id>: start, retry, fix, accept, stop) answer at
 once after setting the new phase; the work runs in a thread. One action at a
@@ -234,7 +242,7 @@ def observe(rec, facts, now, has_project=True, title=None):
 
 
 def check_items(out):
-    """The items of `launch --check <id> --json` output (contract §B); a
+    """The items of `launch check <id> --json` output (contract §B); a
     check that gives no JSON is one problem."""
     try:
         data = json.loads(out)
@@ -267,7 +275,7 @@ def check_outcome(items, notice, accepted):
 
 
 def start_outcome(rc):
-    """What follows `launch <id>` with exit code rc (contract §C)."""
+    """What follows `launch start <id>` with exit code rc (contract §C)."""
     return {0: "starting", 3: "recheck", 4: "stopped", 5: "other-running"}.get(rc, "failed")
 
 
@@ -277,7 +285,7 @@ def retry_note(prev_code, problems):
 
 
 def fix_note(rc):
-    """§3.3: the note on PROBLEEM after `launch --fix` (124: timed out)."""
+    """§3.3: the note on PROBLEEM after `launch fix` (124: timed out)."""
     if rc == 0:
         return "Opgelost"
     if rc == 124:
@@ -323,17 +331,87 @@ def two_active(recs):
     return sum(1 for r in recs if r["phase"] in RUNNING) > 1
 
 
-def public(rec, env, cycle_env=None, autostart=None):
-    """The record as the page gets it (contract §D)."""
-    links = [{"title": l.get("title", ""), "url": l.get("url", ""), "login": l.get("login", "")}
+def txt(v, lang="nl"):
+    """A text of environment.json (a string or {"nl": ..., "en": ...}) in lang, else nl, else the first."""
+    if isinstance(v, dict):
+        return v.get(lang) or v.get("nl") or next((x for x in v.values() if isinstance(x, str) and x), "")
+    return v if isinstance(v, str) else ""
+
+
+# --- choices (1C6, contract stage 2 §3; pure) ----------------------------------
+
+def env_options(env):
+    """The valid options of an environment.json."""
+    return [o for o in env.get("options") or [] if isinstance(o, dict) and ID_RE.match(str(o.get("id", "")))]
+
+
+def default_of(o):
+    return o.get("default", True) is not False
+
+
+def apply_needs(opts, on):
+    """Off what needs a part that is off (a chain settles in a few passes)."""
+    on = dict(on)
+    changed = True
+    while changed:
+        changed = False
+        for o in opts:
+            if on.get(o["id"]) and any(on.get(n) is False for n in o.get("needs") or [] if isinstance(n, str)):
+                on[o["id"]] = False
+                changed = True
+    return on
+
+
+def options_view(env, saved):
+    """The options for /api/state, `on` the remembered choice (saved: {opt: bool}), else the default."""
+    opts = env_options(env)
+    saved = saved if isinstance(saved, dict) else {}
+    on = apply_needs(opts, {o["id"]: saved[o["id"]] if isinstance(saved.get(o["id"]), bool) else default_of(o)
+                            for o in opts})
+    return [{"id": o["id"], "kind": o.get("kind") if o.get("kind") in ("part", "data") else "part",
+             "title": txt(o.get("title")) or o["id"], "about": txt(o.get("about")),
+             "needs": [n for n in o.get("needs") or [] if isinstance(n, str)],
+             "default": default_of(o), "on": on[o["id"]]} for o in opts]
+
+
+def change_options(env, saved, body):
+    """POST /api/options/<id>: (the new remembered choices, None) or (None, the Dutch reason).
+    The remembered choices are only what the person chose that differs from the default;
+    needs is applied when they are shown and used, not stored, so data that went off with
+    its part comes back with it."""
+    opts = env_options(env)
+    ids = [o["id"] for o in opts]
+    if not isinstance(body, dict) or not body:
+        return None, "Er is geen keuze meegestuurd."
+    bad = [str(k) for k, v in body.items() if k not in ids or not isinstance(v, bool)]
+    if bad:
+        return None, "Onbekende keuze: " + ", ".join(bad) + "."
+    saved = saved if isinstance(saved, dict) else {}
+    on = {o["id"]: saved[o["id"]] if isinstance(saved.get(o["id"]), bool) else default_of(o) for o in opts}
+    on.update(body)
+    return {o["id"]: on[o["id"]] for o in opts if on[o["id"]] != default_of(o)}, None
+
+
+def option_flags(env, saved):
+    """`launch start` flags for the remembered choices that differ from the default."""
+    view = options_view(env, saved)
+    on = [v["id"] for v in view if v["on"] and not v["default"]]
+    off = [v["id"] for v in view if not v["on"] and v["default"]]
+    return (["--with", ",".join(on)] if on else []) + (["--without", ",".join(off)] if off else [])
+
+
+def public(rec, env, cycle_env=None, autostart=None, saved=None):
+    """The record as the page gets it (contract §D); saved: its remembered choices."""
+    links = [{"title": txt(l.get("title")), "url": l.get("url", ""), "login": txt(l.get("login"))}
              for l in env.get("links", []) if isinstance(l, dict)]
     return {
         "id": rec["id"],
-        "title": env.get("title", rec["id"]),
-        "summary": env.get("summary", ""),
-        "version": env.get("version", ""),
+        "title": txt(env.get("title")) or rec["id"],
+        "summary": txt(env.get("summary")),
+        "version": txt(env.get("version")),
         "url": env.get("url", ""),
-        "login": env.get("login", ""),
+        "login": txt(env.get("login")),
+        "options": options_view(env, saved),
         # What runs next to it, with its own login (#260).
         "links": links,
         # Licences per repository (#273): the summary and the components.
@@ -346,7 +424,7 @@ def public(rec, env, cycle_env=None, autostart=None):
         "autostart": autostart,
         "problems": rec["problems"],
         "problem_note": rec["problem_note"],
-        "notice": ({"title": rec["notice"].get("title", ""), "text": rec["notice"].get("text", "")}
+        "notice": ({"title": txt(rec["notice"].get("title")), "text": txt(rec["notice"].get("text"))}
                    if isinstance(rec["notice"], dict) else None),
         "progress": rec["progress"],
         "error": rec["error"],
@@ -363,8 +441,9 @@ def public(rec, env, cycle_env=None, autostart=None):
 
 def run(args, timeout=60):
     """Run launch with args; return (exit code, stdout, stderr); 124 on timeout."""
-    # launch writes UTF-8 too (on Windows a pipe would otherwise get cp1252: "één" became "��n").
-    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    # launch writes UTF-8 too (on Windows a pipe would otherwise get cp1252: "één" became "��n"),
+    # and in Dutch: its texts end up on the page.
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", LAUNCH_LANG="nl")
     try:
         p = subprocess.run([*LAUNCH_CMD, *args], capture_output=True, text=True, encoding="utf-8",
                            errors="replace", creationflags=NO_WINDOW, timeout=timeout, stdin=subprocess.DEVNULL,
@@ -420,6 +499,7 @@ WAKE = threading.Event()  # measure now
 CATALOG = {}  # id -> catalogue entry
 RECS = {}  # id -> record, in catalogue order
 SEQ = {"n": 0}
+CHOICES = {}  # env id -> {option id: bool}, as in <state>/choices.json
 
 # The pending automatic start (#238): {"id", "at"} until it fires or is
 # cancelled, then None. The id None means the round (#257).
@@ -463,6 +543,50 @@ def stale(eid, gen):
         return RECS[eid]["gen"] != gen
 
 
+def choices_path():
+    return os.path.join(STATE, "choices.json")
+
+
+def load_choices():
+    """<state>/choices.json: {env id: {option id: bool}}, the ones that differ from the default."""
+    try:
+        with open(choices_path(), encoding="utf-8") as f:
+            data = json.load(f)
+        return {k: v for k, v in data.items() if isinstance(v, dict)} if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def user_options(eid, body):
+    """POST /api/options/<id>: (200, {"ok": true}) or (4xx, {"ok": false, "message"})."""
+    with _LOCK:
+        rec = RECS.get(eid)
+        if rec is None:
+            return 404, {"ok": False, "message": "Onbekende omgeving."}
+        if rec["phase"] != "stopped":
+            return 409, {"ok": False, "message": "Aanpassen kan alleen als de omgeving niet draait."}
+        new, why = change_options(CATALOG.get(eid, {}), CHOICES.get(eid), body)
+        if why:
+            return 400, {"ok": False, "message": why}
+        data = dict(CHOICES)
+        if new:
+            data[eid] = new
+        else:
+            data.pop(eid, None)
+        try:
+            os.makedirs(STATE, exist_ok=True)
+            with open(choices_path(), "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=1)
+        except OSError as e:
+            sys.stderr.write(f"launcher: {eid}: could not store the choices: {e}\n")
+            return 500, {"ok": False, "message": "Bewaren lukte niet."}
+        CHOICES.clear()
+        CHOICES.update(data)
+        bump()
+    sys.stderr.write(f"launcher: {eid}: choices {json.dumps(new)}\n")
+    return 200, {"ok": True}
+
+
 def accepted_path():
     return os.path.join(STATE, "accepted.json")
 
@@ -500,8 +624,8 @@ def notice_of(eid):
 
 
 def refresh_catalog():
-    """Read the catalogue (`launch --list --json`); keeps the old one on failure."""
-    rc, out, _ = run(["--list", "--json"])
+    """Read the catalogue (`launch list --json`); keeps the old one on failure."""
+    rc, out, _ = run(["list", "--json"])
     try:
         envs = [e for e in json.loads(out).get("environments", []) if isinstance(e, dict) and ID_RE.match(e.get("id", ""))]
     except (ValueError, AttributeError):
@@ -530,7 +654,8 @@ def state():
             "cycle": cycle_state(),
             "busy": ACTION.locked(),
             "envs": [public(r, CATALOG.get(r["id"], {}), CYCLE["env"] if CYCLE["active"] else None,
-                            {"at": pend["at"]} if pend and pend["id"] == r["id"] else None) for r in recs],
+                            {"at": pend["at"]} if pend and pend["id"] == r["id"] else None, CHOICES.get(r["id"]))
+                     for r in recs],
         }
 
 
@@ -539,15 +664,15 @@ def state():
 def parts_answering(eid):
     """F2: the parts (main url + links) that answer."""
     env = CATALOG.get(eid, {})
-    parts = [{"title": env.get("title", eid), "url": env.get("url", ""), "login": env.get("login", "")}]
-    parts += [{"title": l.get("title", ""), "url": l.get("url", ""), "login": l.get("login", "")}
+    parts = [{"title": txt(env.get("title")) or eid, "url": env.get("url", ""), "login": txt(env.get("login"))}]
+    parts += [{"title": txt(l.get("title")), "url": l.get("url", ""), "login": txt(l.get("login"))}
               for l in env.get("links", []) if isinstance(l, dict)]
     return [p for p in parts if p["url"] and answers(p["url"]) is True]
 
 
 def measure_once():
     t0 = time.time()
-    rc, out, err = run(["--status", "--json"], timeout=60)
+    rc, out, err = run(["status", "--json"], timeout=60)
     try:
         data = json.loads(out)
         facts = {s["id"]: s for s in data if isinstance(s, dict) and "id" in s}
@@ -562,7 +687,7 @@ def measure_once():
                 continue  # an action works on it, or changed it while we measured
             before = json.dumps(public(rec, CATALOG.get(eid, {})), sort_keys=True, default=str)
             env = CATALOG.get(eid, {})
-            trans = observe(rec, facts.get(eid), now, bool(env.get("project")), env.get("title", eid))
+            trans = observe(rec, facts.get(eid), now, bool(env.get("project")), txt(env.get("title")) or eid)
             log(trans)
             if rec["phase"] == "failed":
                 failed.append(eid)
@@ -598,7 +723,7 @@ def precondition_pass():
     while True:
         if not ACTION.locked():
             for eid in list(RECS):
-                rc, out, _ = run(["--check", eid, "--json"], timeout=60)
+                rc, out, _ = run(["check", eid, "--json", "--lang", "nl"], timeout=60)
                 if rc == 124:
                     continue
                 pre = preconditions_of(check_items(out))
@@ -612,7 +737,7 @@ def precondition_pass():
 # --- the action flows (run while holding ACTION) -------------------------------
 
 def do_check(eid):
-    rc, out, _ = run(["--check", eid, "--json"], timeout=120)
+    rc, out, _ = run(["check", eid, "--json", "--lang", "nl"], timeout=120)
     items = check_items(out)
     update(eid, precondition=preconditions_of(items))
     return items
@@ -633,7 +758,7 @@ def after_check(eid, gen, items, mode="user", note=""):
     elif outcome == "notice":
         transition(eid, "notice", "its notice is not accepted yet", notice=data)
     else:
-        flow_run_start(eid, gen)
+        flow_run_start(eid, gen, mode)
 
 
 def flow_start(eid, gen, mode="user"):
@@ -641,29 +766,33 @@ def flow_start(eid, gen, mode="user"):
     after_check(eid, gen, do_check(eid), mode)
 
 
-def flow_run_start(eid, gen):
+def flow_run_start(eid, gen, mode="user"):
+    """`launch start`: a person's start with the remembered choices, the round
+    and the automatic start with the defaults."""
     if RECS[eid]["phase"] != "starting":
         transition(eid, "starting", "the check is fine; starting")
-    rc, out, err = run([eid], timeout=300)
+    with _LOCK:
+        flags = option_flags(CATALOG.get(eid, {}), CHOICES.get(eid)) if mode == "user" else []
+    rc, out, err = run(["start", eid, *flags], timeout=300)
     if stale(eid, gen):
         return
     text = (out + err).strip()
     outcome = start_outcome(rc)
     if outcome == "starting":
-        sys.stderr.write(f"launcher: {eid}: launch {eid}: exit 0\n")
+        sys.stderr.write(f"launcher: {eid}: launch {' '.join(['start', eid, *flags])}: exit 0\n")
         WAKE.set()
     elif outcome == "recheck":
         items = do_check(eid)
         if not [i for i in items if i.get("kind") in ("problem", "fixable", "precondition")]:
             items = [{"code": "start-refused", "kind": "problem", "text": text or "De start is niet begonnen."}]
-        after_check(eid, gen, items)
+        after_check(eid, gen, items, mode)
     elif outcome == "stopped":
-        transition(eid, "stopped", f"launch {eid}: exit 4 (precondition)", precondition=text or None)
+        transition(eid, "stopped", f"launch start {eid}: exit 4 (precondition)", precondition=text or None)
     elif outcome == "other-running":
-        transition(eid, "problem", f"launch {eid}: exit 5 (another one runs)",
+        transition(eid, "problem", f"launch start {eid}: exit 5 (another one runs)",
                    problems=[{"code": "other-running", "kind": "problem", "text": text}], problem_note="")
     else:
-        transition(eid, "failed", f"launch {eid}: exit {rc}", error="De start is mislukt.", output=text)
+        transition(eid, "failed", f"launch start {eid}: exit {rc}", error="De start is mislukt.", output=text)
 
 
 def flow_retry(eid, gen):
@@ -677,11 +806,11 @@ def flow_retry(eid, gen):
 
 
 def flow_fix(eid, gen):
-    rc, out, err = run(["--fix", eid], timeout=240)
+    rc, out, err = run(["fix", eid], timeout=240)
     if stale(eid, gen):
         return
     note = fix_note(rc)
-    transition(eid, "problem", f"launch --fix {eid}: exit {rc}", problem_note=note,
+    transition(eid, "problem", f"launch fix {eid}: exit {rc}", problem_note=note,
                output=(out + err).strip() if rc else "")
 
 
@@ -691,11 +820,11 @@ def flow_accept(eid, gen):
 
 
 def flow_stop(eid, gen):
-    rc, out, err = run(["--stop", eid], timeout=600)
+    rc, out, err = run(["stop", eid], timeout=600)
     if stale(eid, gen):
         return rc
     if rc == 0:
-        transition(eid, "stopped", f"launch --stop {eid}: exit 0")
+        transition(eid, "stopped", f"launch stop {eid}: exit 0")
     else:
         lines = (out + err).strip().splitlines()
         with _LOCK:
@@ -1038,7 +1167,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         cyc = re.fullmatch(r"/api/cycle/(start|stop|persist-on|persist-off)", self.path)
-        act = re.fullmatch(r"/api/(start|retry|fix|accept|stop)/([a-z0-9-]+)", self.path)
+        act = re.fullmatch(r"/api/(start|retry|fix|accept|stop|options)/([a-z0-9-]+)", self.path)
         if not (cyc or act or self.path == "/api/autostart/cancel") or (act and not ID_RE.match(act.group(2))):
             self.send(404, {"error": "not found"})
             return
@@ -1069,6 +1198,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 msg = "" if ok else "Dat lukte niet."
                 bump()
             self.send(200 if ok else 409, {"ok": ok, **({"message": msg} if msg else {})})
+        elif act.group(1) == "options":
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(min(n, 65536)).decode("utf-8")) if n else None
+            except (ValueError, UnicodeDecodeError):
+                body = None
+            self.send(*user_options(act.group(2), body))
         else:
             code, body = user_action(*act.groups())
             self.send(code, body)
@@ -1106,6 +1242,7 @@ def main():
         LAUNCH_CMD = [OPTS.launch]
     if OPTS.auto_start and not ID_RE.match(OPTS.auto_start):
         ap.error("--auto-start: not an environment id")
+    CHOICES.update(load_choices())
     refresh_catalog()
     measure_once()  # the first answer of /api/state already has the phases
     threading.Thread(target=monitor, daemon=True).start()
