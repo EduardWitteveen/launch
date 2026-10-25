@@ -10,6 +10,9 @@ Launch starts, stops and opens demo environments on a computer, one at a time. `
 
 - How the Launcher and `launch` behave is in `docs/launcher-behaviour.md`. The code follows that document. To change the behaviour, change the document first, with the maintainer.
 - Known problems of an environment go in its `environment.json` as `checks`, with a fix that Launch announces before it runs it (plug and play).
+- Design the interaction functionally before any code: each page or phase has its own name (OVERZICHT, STARTEN, …), its parts are lettered (1A, 1B, 2B3, …), and per page you say its goal, what you see, its buttons and where each goes. The normal path first, then what goes wrong. Ask one question at a time.
+- The rules of the design hold everywhere: a warning only when something is wrong; after a problem Launch never goes on by itself (the user presses "Opnieuw proberen"); what Launch can fix the user can fix too; "Stoppen" means the same everywhere.
+- What is built and what is still to do: §7 and §8 of `docs/launcher-behaviour.md`. Keep them up to date.
 
 ## Language
 
