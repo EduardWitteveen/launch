@@ -255,12 +255,103 @@ def status_of(env):
 # --- checks before a start -----------------------------------------------------
 
 def docker_memory_gib():
+    """What Docker itself has to give to containers (its VM's budget on Windows
+    and macOS; the host's own memory on Linux, which has no such VM)."""
     try:
         out = subprocess.run(["docker", "info", "--format", "{{.MemTotal}}"], capture_output=True, text=True, timeout=30,
                              creationflags=NO_WINDOW)
         return int(out.stdout.strip()) / 2**30 if out.returncode == 0 else None
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return None
+
+
+def host_memory_gib():
+    """This computer's own physical memory (not Docker's budget out of it),
+    for the message when Docker has too little: is that Docker's setting, or
+    does the computer itself not have enough? None if it could not be read."""
+    try:
+        if WINDOWS:
+            import ctypes
+
+            class _MemStatus(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                           ("ullTotalPhys", ctypes.c_uint64), ("ullAvailPhys", ctypes.c_uint64),
+                           ("ullTotalPageFile", ctypes.c_uint64), ("ullAvailPageFile", ctypes.c_uint64),
+                           ("ullTotalVirtual", ctypes.c_uint64), ("ullAvailVirtual", ctypes.c_uint64),
+                           ("ullAvailExtendedVirtual", ctypes.c_uint64)]
+            stat = _MemStatus()
+            stat.dwLength = ctypes.sizeof(_MemStatus)
+            if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                return None
+            return stat.ullTotalPhys / 2**30
+        if sys.platform == "darwin":
+            out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=10)
+            return int(out.stdout.strip()) / 2**30 if out.returncode == 0 else None
+        with open("/proc/meminfo", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("MemTotal:"):
+                    return int(line.split()[1]) / 2**20  # kB -> GiB
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
+    return None
+
+
+def project_containers(project):
+    """Every container (any state, also one that never started) of a compose
+    project: [{name, status, exitcode, oomkilled, error}], docker's own words."""
+    try:
+        out = subprocess.run(["docker", "ps", "-a", "--filter", f"label=com.docker.compose.project={project}",
+                             "--format", "{{.Names}}"], capture_output=True, text=True, timeout=30,
+                             creationflags=NO_WINDOW)
+        names = [n for n in out.stdout.splitlines() if n] if out.returncode == 0 else []
+        if not names:
+            return []
+        out = subprocess.run(["docker", "inspect", "--format",
+                             "{{.Name}}\t{{.State.Status}}\t{{.State.ExitCode}}\t{{.State.OOMKilled}}\t{{.State.Error}}",
+                             *names], capture_output=True, text=True, timeout=30, creationflags=NO_WINDOW)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    result = []
+    for line in out.stdout.splitlines() if out.returncode == 0 else []:
+        name, status, exitcode, oomkilled, error = (line.split("\t") + [""] * 5)[:5]
+        result.append({"name": name.lstrip("/"), "status": status, "exitcode": exitcode,
+                       "oomkilled": oomkilled == "true", "error": error})
+    return result
+
+
+def container_problem(c):
+    """A Dutch sentence about why this container (from project_containers) is a
+    problem, from docker's own state: never a guess beyond what docker itself
+    reports. "" when it runs, or when it is merely still starting (its status
+    may be "created" for a few seconds without that meaning anything is wrong)."""
+    if c["oomkilled"]:
+        return (f"is onverwacht gestopt (exitcode {c['exitcode']}, geheugen tekort / OOMKilled). Docker heeft "
+                "mogelijk te weinig geheugen gekregen; zie de README (het geheugen van Docker vergroten)")
+    error = c.get("error") or ""
+    if re.search(r"no matching entries in passwd file|unable to find user", error, re.I):
+        return ("kan niet starten: de gebruiker die erin moet draaien ontbreekt in de image. Dit kan een "
+                "beschadigde lokale kopie van de image zijn; probeer de image opnieuw te downloaden (zie de README)")
+    if re.search(r"rosetta error|invalid elf image|exec format error", error, re.I):
+        return ("kan niet starten: de image lijkt niet te werken onder emulatie op dit platform (ARM64). Probeer "
+                "de image opnieuw te downloaden (zie de README)")
+    if c["status"] in ("exited", "dead"):
+        return f"is gestopt (status {c['status']}, exitcode {c['exitcode']})"
+    return ""
+
+
+def container_problems(env):
+    """Problems with this environment's own containers (its compose project): a
+    container that is there but not running, with what docker itself knows
+    about why - the detail a "curl: connection refused" never gives."""
+    project = env.get("project")
+    if not project:
+        return []
+    problems = []
+    for c in project_containers(project):
+        reason = container_problem(c)
+        if reason:
+            problems.append(f"De container '{c['name']}' van {env['title']} {reason}.")
+    return problems
 
 
 def check(env):
@@ -274,9 +365,11 @@ def check(env):
     else:
         need = (env.get("needs") or {}).get("memory_gib", 0)
         if mem + 0.5 < need:
-            problems.append(f"Docker heeft {mem:.0f} GB geheugen; {env['title']} heeft er ongeveer {need} nodig "
+            host = host_memory_gib()
+            extra = f" (van {host:.0f} GB fysiek geheugen op deze computer)" if host else ""
+            problems.append(f"Docker heeft {mem:.0f} GB geheugen{extra}; {env['title']} heeft er ongeveer {need} nodig "
                             "(zie de README: het geheugen van Docker vergroten).")
-    return problems + busy_ports(env) + [c["problem"] for c in failing_checks(env)]
+    return problems + busy_ports(env) + container_problems(env) + [c["problem"] for c in failing_checks(env)]
 
 
 def ports_of(env):
@@ -331,8 +424,9 @@ def busy_ports(env):
 #     "problem": "what is wrong, for the person",
 #     "fix": {
 #       "text": "what the fix changes on this computer (shown before it runs)",
-#       "run": ["../../tools/hostnamen.ps1", "identity"],
-#       "os": ["windows"]                              optional: where it works
+#       "run": {"windows": ["../../tools/hostnamen.ps1", "identity"],   one command
+#               "macos": ["../../tools/hostnamen.sh", "identity"],    per OS it
+#               "linux": ["../../tools/hostnamen.sh", "identity"]}    works on
 #     }
 #   }]
 #
@@ -378,9 +472,14 @@ def failing_checks(env):
     return [c for c in env.get("checks", []) if isinstance(c, dict) and fails(env, c)]
 
 
+def run_of(c):
+    """The fix's command for this OS: "run" is a {os: [command, args...]} map
+    (one command per OS it works on); None where there is none for this OS."""
+    return (c.get("fix") or {}).get("run", {}).get(this_os())
+
+
 def has_fix(c):
-    f = c.get("fix") or {}
-    return bool(f.get("run")) and this_os() in f.get("os", [this_os()])
+    return bool(run_of(c))
 
 
 def fixes_of(env):
@@ -393,11 +492,12 @@ def fix(env):
     """Run the fixes of the failing checks; return the ids that still fail."""
     failed = []
     for c in failing_checks(env):
-        if not has_fix(c):
+        cmd = run_of(c)
+        if not cmd:
             continue
         try:
-            # A fix may ask Windows for administrator rights; it waits for the answer.
-            subprocess.run(script(env, c["fix"]["run"]), capture_output=True, creationflags=NO_WINDOW,
+            # A fix may ask for administrator rights; it waits for the answer.
+            subprocess.run(script(env, cmd), capture_output=True, creationflags=NO_WINDOW,
                            timeout=300, stdin=subprocess.DEVNULL)
         except (OSError, subprocess.TimeoutExpired):
             pass  # nobody answered; the check below says so
