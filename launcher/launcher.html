@@ -196,6 +196,7 @@ let lastAnswer = 0;      // when the Launcher last answered (our clock)
 const pageLoaded = Date.now() / 1000;
 let overlay = null;      // {seq, at}: grey until the seq changes
 let topMessage = "";     // what went wrong with the last click
+let heldBack = null;     // the env whose window the browser held back (3B)
 let topMessageAt = 0;
 
 const nowLocal = () => Date.now() / 1000;
@@ -416,7 +417,7 @@ function partsList(parts, head) {
   if (!parts || !parts.length) return null;
   const list = el("ul", { class: "parts" }, ...parts.map((p, i) => el("li", { class: i === 0 && !head ? "main" : null },
     el("a", { href: p.url, target: "_blank", class: i === 0 && !head ? "button primary" : null,
-              onclick: ev => { ev.preventDefault(); openPart(p.url); } },
+              onclick: ev => { ev.preventDefault(); if (openPart(p.url) && heldBack) { heldBack = null; render(); } } },
       i === 0 && !head ? `${p.title} openen` : p.title),
     p.login ? el("span", { class: "plogin" }, "Inloggen: " + p.login) : null)));
   return head ? el("div", {}, el("p", { class: "parts-head" }, head), list) : list;
@@ -562,6 +563,10 @@ function card(env, mode) {
     if (env.unknown_since && now - env.unknown_since >= 60) {
       kids.push(el("div", { class: "warn" }, el("p", {}, "Docker antwoordt even niet.")));
     }
+    if (heldBack === env.id) {
+      kids.push(el("div", { class: "warn" }, el("p", {}, "Je browser hield het venster tegen. Klik op de knop hieronder, "
+        + "of sta pop-ups toe voor deze pagina (het icoontje rechts in de adresbalk); dan gaat het de volgende keer vanzelf.")));
+    }
     kids.push(partsList(mainParts(env)));
     btn("Stoppen", "stop");
   } else if (ph === "failed") {
@@ -694,7 +699,8 @@ function autoOpen() {
   if (!env || env.phase === "stopped") { try { sessionStorage.removeItem(OPEN_KEY); } catch (e) {} return; }
   if (env.phase === "ready" && !(S.cycle && S.cycle.active)) {
     try { sessionStorage.removeItem(OPEN_KEY); } catch (e) {}
-    openPart(env.url);
+    // Not from a click, so a pop-up blocker may hold it back: then say so.
+    if (!openPart(env.url)) { heldBack = env.id; render(); }
   }
 }
 
