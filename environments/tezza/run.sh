@@ -20,5 +20,7 @@ prepare() {
   cp -f "${here}/swf/publish.py" "${STATE_DIR}/swf-publish.py"
   # ... and the demo phase demo.py.
   cp -f "${here}/demo/demo.py" "${STATE_DIR}/demo.py"
+  # Switched off at Aanpassen: the step stays (the same count), its work is skipped.
+  if option_off demo; then STEP_EXPECT[6]=1; fi
 }
 source "$(dirname "${BASH_SOURCE[0]}")/../../lib/run-driver.sh" "$@"

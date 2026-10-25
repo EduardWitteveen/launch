@@ -14,6 +14,10 @@
 #   NC_COMPOSE_URL NC_COMPOSE_SHA NC_OVERRIDE NC_APPS_FILE
 #   DOCKER_URL DOCKER_SHA COMPOSE_URL COMPOSE_SHA
 # NC_APPS_FILE has one line per app: "<id> <version> <url> <sha256>".
+# LAUNCH_OPTIONS_OFF (Launch's "Aanpassen", environment.json "options"): a
+# comma list of what is switched off; an app id (thematiq, integriq,
+# opencatalogi, pipelinq, portaliq) or a data set (demo, <app>-demo). Not set:
+# everything on. OpenRegister and Dossiq are always on (the others need them).
 #
 # Experimental and unofficial. Not for production.
 # SPDX-License-Identifier: EUPL-1.2
@@ -45,6 +49,8 @@ PORT=8609 # upstream's DEMO_PORT default, kept
 # against it), OpenCatalogi before Portaliq (its public portal needs it).
 # The first four are upstream's own list and order.
 ENABLE_ORDER=(openregister thematiq integriq dossiq opencatalogi pipelinq portaliq)
+# Upstream's installer puts these in the apps volume itself, verified or not.
+UPSTREAM_APPS=(openregister thematiq integriq dossiq)
 
 info() { echo "    $*"; }
 log() { echo "==> $*"; }
@@ -75,6 +81,14 @@ compose() {
 }
 
 occ() { compose exec -T -u www-data nextcloud php occ "$@"; }
+
+# Aanpassen: off ID is true when ID (an app or a data set) is switched off.
+off() { [[ ",${LAUNCH_OPTIONS_OFF:-}," == *",$1,"* ]]; }
+# data_on SET APP: a data set is loaded when it and its app are on.
+data_on() { ! off "$1" && ! off "$2"; }
+# apps_on APP...: the ones that are on.
+apps_on() { local a; for a in "$@"; do off "${a}" || printf '%s ' "${a}"; done; }
+SKIPPED="overgeslagen (uitgezet bij Aanpassen)"
 
 # The apps file: "<id> <version> <url> <sha256>" per line.
 apps_list() {
@@ -199,6 +213,10 @@ phase_apps() {
   local id ver url sha specs=""
   while read -r id ver url sha; do
     [[ -n "${sha:-}" ]] || die "NC_APPS_FILE: a line lacks fields (${id:-?})"
+    # An app switched off is not fetched; upstream's own four still are (its
+    # installer would fetch them unverified otherwise), and the enable phase
+    # keeps them off.
+    if off "${id}" && [[ " ${UPSTREAM_APPS[*]} " != *" ${id} "* ]]; then info "${id}: ${SKIPPED}"; continue; fi
     download_verified "${url}" "${sha}" "${DOWNLOADS}/apps/${id}-${ver}.tar.gz"
     specs+="${id}:${ver} "
   done < <(apps_list)
@@ -243,6 +261,9 @@ phase_ready() {
 # The apps beyond upstream's four (OpenCatalogi, Pipelinq, Portaliq) enabled
 # with occ, all seven in dependency order (idempotent; it also repairs one
 # that upstream's hook only warned about), then upstream's own schema repair.
+# An app switched off at Aanpassen is disabled instead: upstream's hook
+# enables its four at the first install, and an earlier start may have
+# enabled any of them. Its data stays in the database.
 # An app tarball newer than the database (a pin bump) needs `occ upgrade`.
 phase_enable() {
   log "enable the apps (${ENABLE_ORDER[*]})"
@@ -252,18 +273,28 @@ phase_enable() {
   fi
   local app
   for app in "${ENABLE_ORDER[@]}"; do
-    occ app:enable "${app}"
+    if off "${app}"; then
+      occ app:disable "${app}" >/dev/null 2>&1 || true
+      info "${app}: ${SKIPPED}"
+    else
+      occ app:enable "${app}"
+    fi
   done
   occ openregister:schemas:dedup || true
 }
 
 # Conduction's own demo data: Dossiq's caseload and Pipelinq's dataset. Both
-# commands are idempotent (they skip what is already there).
+# commands are idempotent (they skip what is already there). A data set
+# switched off at Aanpassen is not loaded; what an earlier start loaded stays
+# (the apps have no command to take their demo data out again).
 phase_seed() {
   log "demo data (dossiq:demo:seed, pipelinq:demo:seed, the apps' own example data)"
-  occ dossiq:demo:seed --verify-only || true
-  occ dossiq:demo:seed
-  occ pipelinq:demo:seed
+  if off demo; then info "demozaken: ${SKIPPED}"
+  else
+    occ dossiq:demo:seed --verify-only || true
+    occ dossiq:demo:seed
+  fi
+  if data_on pipelinq-demo pipelinq; then occ pipelinq:demo:seed; else info "pipelinq-demo: ${SKIPPED}"; fi
   add_dawo_login
   out_of_the_box
 }
@@ -285,28 +316,42 @@ out_of_the_box() {
   # Required steps: register settings (normally set by the apps' repair
   # step), Pipelinq's reporting currency, OpenCatalogi's scope.
   if ! occ config:app:get dossiq case_type_schema >/dev/null 2>&1 \
-     || ! occ config:app:get opencatalogi listing_register >/dev/null 2>&1; then
+     || { ! off opencatalogi && ! occ config:app:get opencatalogi listing_register >/dev/null 2>&1; }; then
     occ maintenance:repair >/dev/null
   fi
-  occ config:app:set pipelinq currency --value=EUR >/dev/null
-  occ config:app:set pipelinq receipt_company_name --value="Gemeente Voorbeeld" >/dev/null
-  occ config:app:set pipelinq receipt_company_city --value="Voorbeeld" >/dev/null
-  occ config:app:set pipelinq receipt_company_country --value="Nederland" >/dev/null
-  occ config:app:set opencatalogi default_catalog_scope --value=public >/dev/null
-  occ config:app:set opencatalogi onboarding_completed_version --value=3 >/dev/null
+  if ! off pipelinq; then
+    occ config:app:set pipelinq currency --value=EUR >/dev/null
+    occ config:app:set pipelinq receipt_company_name --value="Gemeente Voorbeeld" >/dev/null
+    occ config:app:set pipelinq receipt_company_city --value="Voorbeeld" >/dev/null
+    occ config:app:set pipelinq receipt_company_country --value="Nederland" >/dev/null
+  fi
+  if ! off opencatalogi; then
+    occ config:app:set opencatalogi default_catalog_scope --value=public >/dev/null
+    occ config:app:set opencatalogi onboarding_completed_version --value=3 >/dev/null
+  fi
   # Dossiq's optional dwangsom step wants a callback secret: made here, once,
   # never in git or the image.
   if ! occ config:app:get dossiq dwangsom_callback_secret >/dev/null 2>&1; then
     occ config:app:set dossiq dwangsom_callback_secret --value="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" >/dev/null
   fi
-  occ dossiq:bezwaar:seed >/dev/null 2>&1 || true
-  occ portaliq:example-site:install zuiddrecht >/dev/null 2>&1 || true
+  off demo || occ dossiq:bezwaar:seed >/dev/null 2>&1 || true
+  if data_on portaliq-demo portaliq; then occ portaliq:example-site:install zuiddrecht >/dev/null 2>&1 || true; fi
   # The wizards' own example data has no occ command: their setup action, as
-  # the admin (upstream's admin / admin), once per app.
-  for app in openregister integriq dossiq opencatalogi portaliq; do
+  # the admin (upstream's admin / admin), once per app. A data set switched
+  # off is not loaded and the wizard is answered with "skipped" (any answer
+  # closes it), unless an earlier start loaded it: that data stays.
+  local ds decided
+  for app in $(apps_on openregister integriq dossiq opencatalogi portaliq); do
+    case "${app}" in openregister|dossiq) ds=demo ;; *) ds="${app}-demo" ;; esac
+    decided="$(occ config:app:get "${app}" demo_data_decided 2>/dev/null || true)"
+    if off "${ds}"; then
+      [[ -n "${decided}" ]] || occ config:app:set "${app}" demo_data_decided --value=skipped >/dev/null
+      info "${app} example data: ${SKIPPED}"
+      continue
+    fi
     # The action loads the dataset the wizard chose (400 without one).
     occ config:app:set "${app}" demo_dataset --value=demo >/dev/null
-    if [[ "$(occ config:app:get "${app}" demo_data_decided 2>/dev/null || true)" != installed ]]; then
+    if [[ "${decided}" != installed ]]; then
       if [[ "${DRY_RUN}" -eq 1 ]]; then echo "DRY-RUN: POST ${base}/${app}/api/setup/action/load-demo-data"
       else
         curl -fsS -o /dev/null --max-time 600 -u admin:admin -H 'OCS-APIRequest: true' -X POST -d dataset=demo \
@@ -317,25 +362,29 @@ out_of_the_box() {
   done
   # OpenCatalogi's optional federation steps (its wizard comes back as long
   # as they are open): connect to the public directory, as its button does.
-  if [[ "${DRY_RUN}" -eq 0 ]]; then
+  if [[ "${DRY_RUN}" -eq 0 ]] && ! off opencatalogi; then
     curl -fsS -o /dev/null --max-time 300 -u admin:admin -H 'OCS-APIRequest: true' -X POST \
       "${base}/opencatalogi/api/setup/action/connect-federation" || info "opencatalogi: federation not connected (offline?)"
   fi
-  occ config:app:set pipelinq demo_dataset --value=demo >/dev/null
-  occ config:app:set pipelinq demo_data_decided --value=seeded >/dev/null
-  occ config:app:set pipelinq setup_dismissed_version --value=1 >/dev/null
+  if data_on pipelinq-demo pipelinq; then
+    occ config:app:set pipelinq demo_dataset --value=demo >/dev/null
+    occ config:app:set pipelinq demo_data_decided --value=seeded >/dev/null
+  elif ! off pipelinq && [[ -z "$(occ config:app:get pipelinq demo_data_decided 2>/dev/null || true)" ]]; then
+    occ config:app:set pipelinq demo_data_decided --value=skipped >/dev/null
+  fi
+  off pipelinq || occ config:app:set pipelinq setup_dismissed_version --value=1 >/dev/null
   # Per user (admin and launcher): no guided tour, no support dialog, no
   # first-run dashboard.
   for user in admin launcher; do
     occ user:setting "${user}" firstrunwizard show 0 >/dev/null 2>&1 || true
     occ user:setting "${user}" dashboard firstRun 0 >/dev/null 2>&1 || true
-    for app in openregister integriq opencatalogi pipelinq; do
+    for app in $(apps_on openregister integriq opencatalogi pipelinq); do
       occ user:setting "${user}" "${app}" pref_walkthroughseenversion 999.0.0 >/dev/null
     done
-    for app in dossiq portaliq; do
+    for app in $(apps_on dossiq portaliq); do
       occ user:setting "${user}" "${app}" pref_walkthroughcompletedversion 999.0.0 >/dev/null
     done
-    for app in openregister integriq dossiq opencatalogi pipelinq portaliq; do
+    for app in $(apps_on openregister integriq dossiq opencatalogi pipelinq portaliq); do
       occ user:setting "${user}" "${app}" pref_support-dialog-seen 1 >/dev/null
     done
   done
@@ -346,7 +395,7 @@ out_of_the_box() {
         "http://localhost:${PORT}/ocs/v2.php/apps/notifications/api/v2/notifications" || true
     done
   fi
-  info "setup answered, example data loaded, tours and first-run screens off"
+  info "setup answered, example data as chosen, tours and first-run screens off"
 }
 
 # The appliance's one demo login, launcher / launcher (#258), next to upstream's

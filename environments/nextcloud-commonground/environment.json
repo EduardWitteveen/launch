@@ -198,6 +198,131 @@
   "needs": {
     "memory_gib": 8
   },
+  "options": [
+    {
+      "id": "thematiq",
+      "kind": "part",
+      "title": {
+        "nl": "Huisstijl (Thematiq)"
+      },
+      "about": {
+        "nl": "Je eigen huisstijl op elk Nextcloud-scherm, live aan te passen."
+      },
+      "default": true
+    },
+    {
+      "id": "integriq",
+      "kind": "part",
+      "title": {
+        "nl": "Koppelingen (Integriq)"
+      },
+      "about": {
+        "nl": "Koppelt bronnen zoals PDOK en StUF aan de registers."
+      },
+      "default": true
+    },
+    {
+      "id": "opencatalogi",
+      "kind": "part",
+      "title": {
+        "nl": "Publicaties (OpenCatalogi)"
+      },
+      "about": {
+        "nl": "Catalogi met openbare publicaties, ook voor de Woo."
+      },
+      "default": true
+    },
+    {
+      "id": "pipelinq",
+      "kind": "part",
+      "title": {
+        "nl": "Klantcontact (Pipelinq)"
+      },
+      "about": {
+        "nl": "Klanten, contactmomenten en verzoeken."
+      },
+      "default": true
+    },
+    {
+      "id": "portaliq",
+      "kind": "part",
+      "title": {
+        "nl": "Publieksportaal (Portaliq)"
+      },
+      "about": {
+        "nl": "Eén portaal waar inwoners en bedrijven hun zaken zien."
+      },
+      "default": true
+    },
+    {
+      "id": "demo",
+      "kind": "data",
+      "title": {
+        "nl": "Demozaken (Dossiq)"
+      },
+      "about": {
+        "nl": "Verzonnen zaken, bezwaren en zaaktypes, en de voorbeeldregisters van OpenRegister."
+      },
+      "default": true,
+      "needs": []
+    },
+    {
+      "id": "integriq-demo",
+      "kind": "data",
+      "title": {
+        "nl": "Voorbeeldkoppelingen (Integriq)"
+      },
+      "about": {
+        "nl": "Een paar voorbeeldbronnen om mee te proberen."
+      },
+      "default": true,
+      "needs": [
+        "integriq"
+      ]
+    },
+    {
+      "id": "opencatalogi-demo",
+      "kind": "data",
+      "title": {
+        "nl": "Voorbeeldpublicaties (OpenCatalogi)"
+      },
+      "about": {
+        "nl": "Een catalogus met verzonnen publicaties."
+      },
+      "default": true,
+      "needs": [
+        "opencatalogi"
+      ]
+    },
+    {
+      "id": "pipelinq-demo",
+      "kind": "data",
+      "title": {
+        "nl": "Voorbeeldklanten (Pipelinq)"
+      },
+      "about": {
+        "nl": "Verzonnen klanten, contactmomenten en verzoeken."
+      },
+      "default": true,
+      "needs": [
+        "pipelinq"
+      ]
+    },
+    {
+      "id": "portaliq-demo",
+      "kind": "data",
+      "title": {
+        "nl": "Voorbeeldportaal Zuiddrecht (Portaliq)"
+      },
+      "about": {
+        "nl": "Een ingericht portaal van de verzonnen gemeente Zuiddrecht."
+      },
+      "default": true,
+      "needs": [
+        "portaliq"
+      ]
+    }
+  ],
   "source": {
     "url": "https://github.com/ConductionNL/dossiq",
     "rev": "c2d5e17b46d7acae0506bea1c7ab4fb5a010bc45",

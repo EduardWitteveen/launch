@@ -291,6 +291,19 @@
   "needs": {
     "memory_gib": 8
   },
+  "options": [
+    {
+      "id": "openformulieren",
+      "kind": "part",
+      "title": {
+        "nl": "Burgerformulier (Open Formulieren)"
+      },
+      "about": {
+        "nl": "Het formulier waarmee een inwoner een aanvraag doet. Zonder dit start Valtimo sneller en met minder geheugen."
+      },
+      "default": true
+    }
+  ],
   "source": {
     "url": "https://github.com/generiekzaakafhandelcomponent/gzac-docker-compose",
     "rev": "7159648f21cab72fe0dab9ac27ef344b63495ae1"
