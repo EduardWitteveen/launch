@@ -10,6 +10,7 @@ Met de **Launcher** start, stop en open je omgevingen op je eigen computer, éé
 | **Tezza** | Het zaak- en documentbeheer van Contezza, compleet zoals Contezza het levert (tezza-packaging 4.15.2: Alfresco, GZAC, Open Zaak, Notificaties, Objecten), met de zaaktypes van Súdwest-Fryslân. | ongeveer 45 minuten (ongeveer 8 GB downloaden), daarna een paar minuten |
 | **Nextcloud Common Ground** | De apps van Conduction (Dossiq, Pipelinq, Portaliq, OpenRegister) in Nextcloud, met demozaken. | ongeveer 20 minuten |
 | **Valtimo** | Zaakgericht werken (GZAC): een aanvraag evenementenvergunning behandelen, met Open Zaak, Objecten en een burgerformulier (Open Formulieren). | ongeveer 30 minuten |
+| **Informatiebeheer** | Drie klikbare demo's van archiefwaardig werken voor de medewerker: netwerkschijven op Nextcloud met bewaartermijnen ([XENA](https://github.com/EHa-1999/XENA)), een assistent in het kantoorpakket ([MIRA](https://github.com/EHa-1999/MIRA)) en e-mailarchivering ([ELSA](https://github.com/EHa-1999/ELSA)). Toekomstbeelden met verzonnen gegevens. | een minuut |
 | **Haal Centraal** | Persoonsgegevens opvragen bij de BRP-testversie van de RvIG, met fictieve testpersonen. Klein en snel: handig om de Launcher te leren kennen. | een minuut |
 
 Launch is een **experimenteel en onofficieel** project. Het is geen product van Contezza, Conduction, Ritense, de RvIG, Mijn Bureau of een gemeente. Het komt voort uit [dawo-appliance](https://github.com/EduardWitteveen/dawo-appliance) en werkt ook los daarvan.
