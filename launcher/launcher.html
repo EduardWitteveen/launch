@@ -104,6 +104,7 @@
   .custom b { color: var(--text); font-weight: 600; }
   .options { font-size: .9rem; }
   .options > summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .options small.why { color: var(--warn); }
   .opt-head { margin: 10px 0 4px; font-weight: 600; font-size: .85rem; color: var(--muted); }
   .opt { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; cursor: pointer; }
   .opt input { margin: 3px 0 0; flex: none; width: 16px; height: 16px; accent-color: var(--accent); cursor: inherit; }
@@ -428,8 +429,8 @@ const mainParts = env => [{ title: env.title, url: env.url, login: env.login }, 
 // The choices of an environment (1C6, 1C7): parts first, then data. A data
 // set whose part is off is off too, and cannot be switched on.
 const optName = o => (o.title || o.id).split(/ \(|: /)[0];
-const optBlocked = (o, opts) => o.kind === "data" &&
-  (o.needs || []).some(n => opts.some(p => p.id === n && !p.on));
+const optBlocked = (o, opts) => !!o.unavailable || (o.kind === "data" &&
+  (o.needs || []).some(n => opts.some(p => p.id === n && !p.on)));
 
 // 1C7: "Aangepast: zonder Klantcontact, met …"; a data set that is off only
 // because its part is off is not named again.
@@ -448,11 +449,12 @@ function optionsBlock(env) {
   const row = o => {
     const blocked = optBlocked(o, opts);
     const box = el("input", { type: "checkbox", "data-opt": o.id, "data-needs": (o.needs || []).join(","),
+                              "data-unavailable": o.unavailable ? "1" : null,
                               disabled: blocked, onchange: ev => {
       // At once on the page: the data sets that need this part follow.
       if (o.kind === "part") {
         for (const d of ev.target.closest(".options").querySelectorAll("input[data-needs]")) {
-          if (!d.dataset.needs.split(",").includes(o.id)) continue;
+          if (!d.dataset.needs.split(",").includes(o.id) || d.dataset.unavailable) continue;
           d.disabled = !ev.target.checked;
           if (!ev.target.checked) d.checked = false;
           d.closest(".opt").classList.toggle("off", d.disabled);
@@ -462,7 +464,8 @@ function optionsBlock(env) {
     } });
     box.checked = !!o.on && !blocked;
     return el("label", { class: "opt" + (blocked ? " off" : "") }, box,
-      el("span", {}, o.title || o.id, o.about ? el("small", {}, o.about) : null));
+      el("span", {}, o.title || o.id, o.about ? el("small", {}, o.about) : null,
+        o.unavailable ? el("small", { class: "why" }, o.unavailable) : null));
   };
   const parts = opts.filter(o => o.kind === "part"), data = opts.filter(o => o.kind !== "part");
   const both = parts.length && data.length;

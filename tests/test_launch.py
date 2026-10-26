@@ -206,6 +206,23 @@ class Options(Base):
         run_env.assert_called_once_with("nc", "start", {"LAUNCH_OPTIONS_ON": "pipelinq,portaliq",
                                                         "LAUNCH_OPTIONS_OFF": "demo,more"})
 
+    def test_a_source(self):
+        env = {"id": "v", "title": "Valtimo", "options": [
+            {"id": "here-too", "kind": "data", "source": {"path": "tests"}},
+            {"id": "gone", "kind": "data", "source": {"path": "sources/no-such-source", "title": "de processen"}}]}
+        # Missing: off by default, and --with is wrong use that says where it goes.
+        self.assertEqual(launch.resolve_options(env), {"on": ["here-too"], "off": ["gone"]})
+        with self.assertRaises(launch.Usage) as e:
+            launch.resolve_options(env, ["gone"])
+        self.assertIn("zet de processen in sources/no-such-source", str(e.exception))
+        # On: run.sh gets the folder.
+        self.assertEqual(launch.source_env(env, {"on": ["here-too"]}),
+                         {"LAUNCH_SOURCE_HERE_TOO": os.path.join(launch.ROOT, "tests")})
+        self.assertEqual(launch.source_env(env, {"on": []}), {})
+        # An empty folder is missing too.
+        with tempfile.TemporaryDirectory(dir=launch.ROOT) as d:
+            self.assertTrue(launch.source_missing({"source": {"path": os.path.basename(d)}}))
+
     def test_no_file_no_variables(self):
         self.assertEqual(launch.options_env("nc"), {})
 

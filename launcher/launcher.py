@@ -349,6 +349,24 @@ def default_of(o):
     return o.get("default", True) is not False
 
 
+# Launch's own folder: a choice's "source" path is relative to it (docs §6).
+LAUNCH_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def source_missing(o):
+    """The Dutch reason when the choice needs a source that is not there (an empty folder
+    counts as not there), else None."""
+    src = o.get("source")
+    if not isinstance(src, dict) or not isinstance(src.get("path"), str) or not src["path"].strip():
+        return None
+    try:
+        if os.listdir(os.path.join(LAUNCH_ROOT, src["path"])):
+            return None
+    except OSError:
+        pass
+    return f"Bron ontbreekt: zet {txt(src.get('title')) or o['id']} in {src['path']}"
+
+
 def apply_needs(opts, on):
     """Off what needs a part that is off (a chain settles in a few passes)."""
     on = dict(on)
@@ -366,12 +384,16 @@ def options_view(env, saved):
     """The options for /api/state, `on` the remembered choice (saved: {opt: bool}), else the default."""
     opts = env_options(env)
     saved = saved if isinstance(saved, dict) else {}
-    on = apply_needs(opts, {o["id"]: saved[o["id"]] if isinstance(saved.get(o["id"]), bool) else default_of(o)
+    missing = {o["id"]: source_missing(o) for o in opts}
+    on = apply_needs(opts, {o["id"]: not missing[o["id"]] and
+                            (saved[o["id"]] if isinstance(saved.get(o["id"]), bool) else default_of(o))
                             for o in opts})
     return [{"id": o["id"], "kind": o.get("kind") if o.get("kind") in ("part", "data") else "part",
              "title": txt(o.get("title")) or o["id"], "about": txt(o.get("about")),
              "needs": [n for n in o.get("needs") or [] if isinstance(n, str)],
-             "default": default_of(o), "on": on[o["id"]]} for o in opts]
+             "default": default_of(o), "on": on[o["id"]],
+             # A missing source: off, and the page cannot switch it on.
+             "unavailable": missing[o["id"]]} for o in opts]
 
 
 def change_options(env, saved, body):
@@ -386,6 +408,9 @@ def change_options(env, saved, body):
     bad = [str(k) for k, v in body.items() if k not in ids or not isinstance(v, bool)]
     if bad:
         return None, "Onbekende keuze: " + ", ".join(bad) + "."
+    for o in opts:
+        if body.get(o["id"]) is True and source_missing(o):
+            return None, source_missing(o) + "."
     saved = saved if isinstance(saved, dict) else {}
     on = {o["id"]: saved[o["id"]] if isinstance(saved.get(o["id"]), bool) else default_of(o) for o in opts}
     on.update(body)
@@ -396,7 +421,8 @@ def option_flags(env, saved):
     """`launch start` flags for the remembered choices that differ from the default."""
     view = options_view(env, saved)
     on = [v["id"] for v in view if v["on"] and not v["default"]]
-    off = [v["id"] for v in view if not v["on"] and v["default"]]
+    # Off for a missing source needs no flag: launch puts it off by itself.
+    off = [v["id"] for v in view if not v["on"] and v["default"] and not v["unavailable"]]
     return (["--with", ",".join(on)] if on else []) + (["--without", ",".join(off)] if off else [])
 
 

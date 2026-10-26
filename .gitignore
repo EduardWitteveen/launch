@@ -1,2 +1,4 @@
 node_modules/
 __pycache__/
+# Sources an environment can load (for example internal process descriptions); local only, never in git
+sources/

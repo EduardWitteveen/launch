@@ -333,7 +333,8 @@ class Options(unittest.TestCase):
         v = L.options_view(NC, None)
         self.assertEqual([(o["id"], o["on"]) for o in v], [("pipelinq", True), ("portaliq", False), ("demo", True)])
         self.assertEqual(v[0], {"id": "pipelinq", "kind": "part", "title": "Klantcontact (Pipelinq)",
-                                "about": "Contactmomenten", "needs": [], "default": True, "on": True})
+                                "about": "Contactmomenten", "needs": [], "default": True, "on": True,
+                                "unavailable": None})
         self.assertEqual(v[2]["needs"], ["pipelinq"])
         self.assertEqual(L.public(rec_in("stopped"), NC, saved={"portaliq": True})["options"][1]["on"], True)
 
@@ -353,6 +354,22 @@ class Options(unittest.TestCase):
         # A data set switched off by the person stays off when its part comes back.
         self.assertEqual(L.change_options(NC, {"pipelinq": False, "demo": False}, {"pipelinq": True}),
                          ({"demo": False}, None))
+
+    def test_a_missing_source_is_off_and_cannot_go_on(self):
+        env = {"id": "v", "options": [
+            {"id": "here", "kind": "data", "source": {"path": "launcher", "title": "x"}},
+            {"id": "gone", "kind": "data", "title": "Processen",
+             "source": {"path": "sources/no-such-source", "title": {"nl": "de processen"}}}]}
+        v = L.options_view(env, {"gone": True})
+        self.assertEqual([(o["id"], o["on"]) for o in v], [("here", True), ("gone", False)])
+        self.assertIsNone(v[0]["unavailable"])
+        self.assertEqual(v[1]["unavailable"], "Bron ontbreekt: zet de processen in sources/no-such-source")
+        new, why = L.change_options(env, None, {"gone": True})
+        self.assertIsNone(new)
+        self.assertIn("Bron ontbreekt", why)
+        self.assertEqual(L.change_options(env, None, {"gone": False}), ({"gone": False}, None))
+        # launch puts it off by itself: no --without for it.
+        self.assertEqual(L.option_flags(env, None), [])
 
     def test_change_refuses_wrong_bodies(self):
         for body in (None, {}, [], {"nosuch": True}, {"demo": "yes"}, {"Bad Id": True}):
