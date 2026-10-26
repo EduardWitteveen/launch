@@ -6,14 +6,16 @@
 # the Ubuntu guest as root, one phase at a time, called by the host runner
 # (hosts/appliance/live-valtimo.nix). Every phase is idempotent.
 #
-#   deploy.sh --phase <name>    park | docker | source | pull | up | ready
+#   deploy.sh --phase <name>    park | docker | source | pull | up | ready | cases
 #   deploy.sh --stop            stop the containers (the other environment)
 #   deploy.sh --dry-run --phase <name>   print what would run
 #
 # Inputs come from the environment, set by the host from the manifest:
 #   VT_REPO VT_REV VT_OVERRIDE DOCKER_URL DOCKER_SHA COMPOSE_URL COMPOSE_SHA
 #   LAUNCH_OPTIONS_OFF (Launch's "Aanpassen"): a comma list; "openformulieren"
-#   there leaves out Open Formulieren (the citizen form). Not set: everything on.
+#   there leaves out Open Formulieren (the citizen form), "zaakpakketten" the
+#   case packages. Not set: everything on.
+#   LAUNCH_SOURCE_ZAAKPAKKETTEN: the folder of case packages (docs §6), if any.
 #
 # Experimental and unofficial. Not for production.
 # SPDX-License-Identifier: EUPL-1.2
@@ -315,6 +317,22 @@ u.save()" >/dev/null 2>&1 || info "${svc}: no launcher login (its admin keeps ad
   info "login launcher / launcher also in Open Zaak, Objecten, Objecttypen, Open Notificaties and the Keycloak console"
 }
 
+# Case packages from a source of our own (docs §6, §8.10): lib/gzac-cases.py
+# (in the state) puts each package's roles, case definition and
+# demo cases into GZAC. Should it fail, Valtimo works without them and the next
+# start tries again (the demo cases already made stay, the rest follow).
+phase_cases() {
+  log "case packages from ${LAUNCH_SOURCE_ZAAKPAKKETTEN:-(no source)}"
+  if [[ ",${LAUNCH_OPTIONS_OFF:-}," == *",zaakpakketten,"* ]]; then info "${SKIPPED}"; return 0; fi
+  if [[ -z "${LAUNCH_SOURCE_ZAAKPAKKETTEN:-}" ]]; then info "overgeslagen (geen bron)"; return 0; fi
+  if [[ "${DRY_RUN}" -eq 1 ]]; then echo "DRY-RUN: python3 gzac-cases.py ${LAUNCH_SOURCE_ZAAKPAKKETTEN} ${STATE_DIR}"; return 0; fi
+  if "${LAUNCH_PYTHON:-python3}" "${STATE_DIR}/gzac-cases.py" "${LAUNCH_SOURCE_ZAAKPAKKETTEN}" "${STATE_DIR}"; then
+    info "case packages loaded"
+  else
+    info "not every case package was loaded; Valtimo works without it, the next start tries again"
+  fi
+}
+
 # The other environment starts: stop the containers (they keep their data).
 do_stop() {
   log "stop the Valtimo containers"
@@ -333,5 +351,6 @@ case "${PHASE}" in
   pull) phase_pull ;;
   up) phase_up ;;
   ready) phase_ready ;;
-  *) die "unknown or missing --phase (park, docker, source, pull, up, ready)" ;;
+  cases) phase_cases ;;
+  *) die "unknown or missing --phase (park, docker, source, pull, up, ready, cases)" ;;
 esac

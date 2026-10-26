@@ -24,7 +24,9 @@ Choices: an environment.json may have "options" (parts and sets of demo
 data, each with a default). --with/--without switch them on or off; a data
 set that needs a part that is off is off too. The resolved set is stored in
 <state>/<id>.options.json, and the start's background process passes it to
-run.sh as LAUNCH_OPTIONS_ON and LAUNCH_OPTIONS_OFF (comma lists).
+run.sh as LAUNCH_OPTIONS_ON and LAUNCH_OPTIONS_OFF (comma lists). A choice
+with a "source" needs a folder under sources/ (never in git); without it the
+choice is off, and when it is on run.sh gets its path as LAUNCH_SOURCE_<ID>.
 
 Messages are in the computer's language (Dutch or English): --lang, else
 LAUNCH_LANG, else the language of the operating system, else English.
@@ -77,6 +79,8 @@ MESSAGES = {
                        "en": "launch: unknown choice '{opt}' for {title}. Choose from: {ids}"},
     "no-options": {"nl": "launch: {title} heeft geen keuzes ('{opt}').",
                    "en": "launch: {title} has no choices ('{opt}')."},
+    "no-source": {"nl": "launch: bron ontbreekt voor '{opt}': zet {what} in {path}",
+                  "en": "launch: the source of '{opt}' is missing: put {what} in {path}"},
     "option-twice": {"nl": "launch: '{opt}' staat bij --with en bij --without.",
                      "en": "launch: '{opt}' is in both --with and --without."},
     "platform": {"nl": "{title} werkt nog alleen vanaf de DAWO-USB-SSD (Kubernetes in een virtuele machine); "
@@ -221,10 +225,37 @@ def options_of(env):
     return [o for o in env.get("options") or [] if isinstance(o, dict) and ID_RE.match(str(o.get("id", "")))]
 
 
+def source_path(o):
+    """The folder a choice's "source" names, absolute (relative to Launch); None without a source."""
+    src = o.get("source")
+    if not isinstance(src, dict) or not isinstance(src.get("path"), str) or not src["path"].strip():
+        return None
+    return os.path.normpath(os.path.join(ROOT, src["path"]))
+
+
+def source_missing(o):
+    """True when the choice needs a source and its folder is not there or is empty."""
+    p = source_path(o)
+    if p is None:
+        return False
+    try:
+        return not os.listdir(p)
+    except OSError:
+        return True
+
+
+def source_env(env, chosen):
+    """LAUNCH_SOURCE_<ID> for each choice that is on and has a source."""
+    on = set(chosen.get("on", []))
+    return {"LAUNCH_SOURCE_" + o["id"].upper().replace("-", "_"): source_path(o)
+            for o in options_of(env) if o["id"] in on and source_path(o)}
+
+
 def resolve_options(env, on=(), off=()):
     """The defaults, then --with (on) and --without (off), then off what needs a part
-    that is off: {"on": [...], "off": [...]}, each option in exactly one. Raises Usage
-    for an id that is not an option of env."""
+    that is off or a source that is missing: {"on": [...], "off": [...]}, each option
+    in exactly one. Raises Usage for an id that is not an option of env, and for --with
+    on a choice whose source is missing."""
     opts = options_of(env)
     ids = [o["id"] for o in opts]
     for opt in list(on) + list(off):
@@ -234,7 +265,11 @@ def resolve_options(env, on=(), off=()):
     for opt in on:
         if opt in off:
             raise Usage(msg("option-twice", opt=opt))
-    want = {o["id"]: o.get("default", True) is not False for o in opts}
+    for o in opts:
+        if o["id"] in on and source_missing(o):
+            raise Usage(msg("no-source", opt=o["id"], what=pick(o["source"].get("title")) or o["id"],
+                            path=o["source"]["path"]))
+    want = {o["id"]: o.get("default", True) is not False and not source_missing(o) for o in opts}
     want.update({i: True for i in on})
     want.update({i: False for i in off})
     changed = True
@@ -327,13 +362,19 @@ def run_env(eid, verb, extra_env=None):
 
 
 def options_env(eid):
-    """LAUNCH_OPTIONS_ON/OFF for run.sh from <state>/<id>.options.json; {} without it (all defaults)."""
+    """LAUNCH_OPTIONS_ON/OFF (and LAUNCH_SOURCE_<ID>) for run.sh from <state>/<id>.options.json;
+    {} without it (all defaults)."""
     try:
         with open(paths(eid)["options"], encoding="utf-8") as f:
             o = json.load(f)
-        return {"LAUNCH_OPTIONS_ON": ",".join(o.get("on", [])), "LAUNCH_OPTIONS_OFF": ",".join(o.get("off", []))}
+        out = {"LAUNCH_OPTIONS_ON": ",".join(o.get("on", [])), "LAUNCH_OPTIONS_OFF": ",".join(o.get("off", []))}
     except (OSError, ValueError, AttributeError, TypeError):
         return {}
+    try:
+        out.update(source_env(env_of(eid), o))
+    except Usage:
+        pass
+    return out
 
 
 def supervise(eid):

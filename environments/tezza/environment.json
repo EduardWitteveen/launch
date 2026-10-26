@@ -358,6 +358,23 @@
       },
       "default": true,
       "needs": []
+    },
+    {
+      "id": "zaakpakketten",
+      "kind": "data",
+      "title": {
+        "nl": "Zaakpakketten uit een eigen bron (in GZAC)"
+      },
+      "about": {
+        "nl": "Elke map in sources/gzac is een zaak met processen, formulieren en demozaken, in de GZAC van Tezza. Die map staat niet in git."
+      },
+      "default": true,
+      "source": {
+        "path": "sources/gzac",
+        "title": {
+          "nl": "de zaakpakketten"
+        }
+      }
     }
   ],
   "checks": [

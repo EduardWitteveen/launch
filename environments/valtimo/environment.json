@@ -302,6 +302,23 @@
         "nl": "Het formulier waarmee een inwoner een aanvraag doet. Zonder dit start Valtimo sneller en met minder geheugen."
       },
       "default": true
+    },
+    {
+      "id": "zaakpakketten",
+      "kind": "data",
+      "title": {
+        "nl": "Zaakpakketten uit een eigen bron"
+      },
+      "about": {
+        "nl": "Elke map in sources/gzac is een zaak met processen, formulieren en demozaken. Die map staat niet in git."
+      },
+      "default": true,
+      "source": {
+        "path": "sources/gzac",
+        "title": {
+          "nl": "de zaakpakketten"
+        }
+      }
     }
   ],
   "source": {

@@ -68,7 +68,7 @@ Alle fasen: OVERZICHT, PROBLEEM, OPLOSSEN, MELDING, STARTEN, KLAAR, MISLUKT, STO
   - **1C3** de licentieregel, alleen als niet alles open source is
   - **1C4** **Starten**
   - **1C5** alleen als een voorwaarde niet klopt: "Kan niet draaien op deze computer, omdat …"; 1C4 is dan uitgeschakeld
-  - **1C6** **Aanpassen** (dichtgeklapt): vinkjes voor de onderdelen en voor elke set demodata. Standaard staat alles aan (behalve wat `environment.json` standaard uit zet). Zet je een onderdeel uit, dan gaat de demodata die het nodig heeft ook uit. De Launcher onthoudt je keuze.
+  - **1C6** **Aanpassen** (dichtgeklapt): vinkjes voor de onderdelen en voor elke set demodata. Standaard staat alles aan (behalve wat `environment.json` standaard uit zet). Zet je een onderdeel uit, dan gaat de demodata die het nodig heeft ook uit. Een vinkje dat een **bron** nodig heeft die er niet is (§6), staat uit en kan niet aan; eronder staat waar de bron moet staan. De Launcher onthoudt je keuze.
   - **1C7** alleen als je iets hebt aangepast: "Aangepast: zonder klantcontact"
 - **1D** Het vak Rondgang, met **Rondgang nu starten**.
 - **1E** Alleen na een onverwacht einde: "Tezza draait niet meer (09:41): Docker is gestopt", tot je op een knop drukt.
@@ -242,6 +242,7 @@ Twee file locks van het besturingssysteem in de map van Launch. Ze verdwijnen va
   - Wat ergens van afhangt dat uit staat, staat ook uit. Dat wordt niet onthouden: zet je het onderdeel weer aan, dan komt de demodata mee terug. Wat de gebruiker zelf uitzette, blijft uit.
   - De Launcher onthoudt per omgeving alleen wat afwijkt van de standaard (`choices.json` in de map van Launch) en geeft dat bij een start mee als `--with`/`--without`. De rondgang en de automatische start gebruiken altijd de standaard.
   - `launch start` geeft de keuze door aan `run.sh` als `LAUNCH_OPTIONS_ON` en `LAUNCH_OPTIONS_OFF` (kommalijsten). Zonder die variabelen geldt de standaard.
+  - **Bronnen:** een keuze kan inhoud nodig hebben die niet in Launch zelf zit, omdat die intern is of nog een concept (bijvoorbeeld de processen van een gemeente). Die keuze krijgt `"source": {"path": "sources/<naam>", "title": {"nl": "…"}}`. De map `sources/` in de map van Launch staat in `.gitignore`: wat daar staat, komt nooit in git. Is de map er niet of leeg, dan staat de keuze uit en kan niet aan ("Bron ontbreekt: zet <titel> in sources/<naam>"); `launch start --with` geeft dan dezelfde tekst (exit 2). Staat de keuze aan, dan krijgt `run.sh` het volledige pad als `LAUNCH_SOURCE_<ID>` (de id in hoofdletters, `-` wordt `_`). *(Later: `"url"` naast `"path"`, zodat Launch de bron zelf ophaalt.)*
   - `run.sh`/`deploy.sh` volgen de keuze bij elke start: een onderdeel dat uit staat, wordt niet geïnstalleerd, of uitgezet als een eerdere start het aanzette. Demodata die uit staat, wordt niet geladen; demodata van een eerdere start blijft staan. Het aantal stappen blijft gelijk; een stap die niets te doen heeft, zegt "overgeslagen (uitgezet bij Aanpassen)".
 - **Teksten per taal:** elke tekst mag een string zijn of `{"nl": "…", "en": "…"}`. `launch` kiest de taal van de computer (anders `nl`, anders de eerste); de Launcher vraagt altijd `nl`.
 
@@ -257,6 +258,7 @@ Gebouwd volgens §1–§6, met deze keuzes in de uitwerking:
 - **Het akkoord** op een MELDING staat in `accepted.json` (per omgeving de versies).
 - **Het venster bij KLAAR:** het tabblad dat startte, opent het; houdt de pop-upblokker het tegen, dan zegt de kaart dat, met wat je kunt doen.
 - **De commandline:** `launch check` geeft 0 (in orde), 3 (probleem) of 4 (voorwaarde). Het startproces is het verborgen subcommando `supervise`. `launch --version` komt uit de constante `VERSION` in `launch.py`.
+- **Bronnen en zaakpakketten** (§6, 26 oktober 2026): `lib/gzac-cases.py` laadt de pakketten uit `sources/gzac` in de GZAC van Tezza (als laatste stap van de start; de rollen als autorisatieprofielen) en van Valtimo. Met Tezza echt geprobeerd; met Valtimo nog niet. GZAC wijst een taak toe aan het gebruikers-id (`/v1/users/<naam>`) en laat alleen wie de taak heeft hem afronden.
 - **Tests:** `python -m unittest discover tests` (de overgangen van de Launcher, de commandline, de keuzes); geen Docker nodig.
 
 ## 8. Nog te doen
@@ -269,6 +271,8 @@ Gebouwd volgens §1–§6, met deze keuzes in de uitwerking:
 6. **De taal van de pagina** volgt later die van de browser; nu is de pagina Nederlands.
 7. **Demodata verwijderen** als je die uitzet na een eerdere start: nu blijft die staan (de apps hebben er geen commando voor).
 8. **De keuzes echt proberen** met Tezza, Nextcloud Common Ground en Valtimo: de scripts zijn alleen op syntax en met droge runs gecontroleerd.
+9. **Bronnen van een URL** (§6): nu alleen een map onder `sources/`; later haalt Launch een bron zelf op, bijvoorbeeld uit een git-server van de gemeente.
+10. **Valtimo: zaakpakketten uit een bron.** Een keuze van Valtimo laadt een zaakpakket (BPMN, DMN, formulieren, zaaktype, demozaken) uit een bron in GZAC. Launch bevat alleen de lader; de pakketten zelf staan in de bron.
 
 ## Bijlage: wat er misging vóór dit ontwerp (25 oktober 2026)
 

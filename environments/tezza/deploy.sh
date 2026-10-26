@@ -9,7 +9,7 @@
 # (hosts/appliance/live-tezza.nix). Every phase is idempotent. Nothing of Tezza
 # is in the image: everything is downloaded from Contezza when it starts.
 #
-#   deploy.sh --phase <name>    park | docker | source | pull | up | ready | catalog | setup | demo
+#   deploy.sh --phase <name>    park | docker | source | pull | up | ready | catalog | setup | demo | cases
 #   deploy.sh --stop            stop the containers (the other environment)
 #   deploy.sh --dry-run --phase <name>   print what would run
 #
@@ -17,7 +17,9 @@
 #   TZ_REPO TZ_REV TZ_OVERRIDE DOCKER_URL DOCKER_SHA COMPOSE_URL COMPOSE_SHA
 #   TZ_SWF_URL TZ_SWF_SHA (optional: Súdwest-Fryslân's case types, #286)
 #   LAUNCH_OPTIONS_OFF (Launch's "Aanpassen"): a comma list; "demo" there
-#   leaves out the demo cases. Not set: everything on.
+#   leaves out the demo cases, "zaakpakketten" the case packages in GZAC.
+#   Not set: everything on.
+#   LAUNCH_SOURCE_ZAAKPAKKETTEN: the folder of case packages (docs §6), if any.
 #
 # Experimental and unofficial. Not for production.
 # SPDX-License-Identifier: EUPL-1.2
@@ -476,6 +478,26 @@ phase_demo() {
   fi
 }
 
+# Case packages from a source of our own (docs §6, §8.10) into Tezza's GZAC:
+# lib/gzac-cases.py (in the state), with Tezza's Keycloak (realm tezza, under
+# the name identity, as GZAC checks its tokens), GZAC's backend at :9090, and
+# the roles as authorization profiles (publishing those sets them in Keycloak).
+# Should it fail, Tezza works without them and the next start tries again (the
+# demo cases already made stay, the rest follow).
+phase_cases() {
+  log "case packages in GZAC from ${LAUNCH_SOURCE_ZAAKPAKKETTEN:-(no source)}"
+  if [[ ",${LAUNCH_OPTIONS_OFF:-}," == *",zaakpakketten,"* ]]; then info "overgeslagen (uitgezet bij Aanpassen)"; return 0; fi
+  if [[ -z "${LAUNCH_SOURCE_ZAAKPAKKETTEN:-}" ]]; then info "overgeslagen (geen bron)"; return 0; fi
+  local args=("${LAUNCH_SOURCE_ZAAKPAKKETTEN}" "${STATE_DIR}" --keycloak http://identity:8181/auth --realm tezza
+              --backend http://localhost:9090/api --profiles http://localhost:9093/api/authorization/profiles)
+  if [[ "${DRY_RUN}" -eq 1 ]]; then echo "DRY-RUN: python3 gzac-cases.py ${args[*]}"; return 0; fi
+  if "${LAUNCH_PYTHON:-python3}" "${STATE_DIR}/gzac-cases.py" "${args[@]}"; then
+    info "case packages loaded"
+  else
+    info "not every case package was loaded; Tezza works without it, the next start tries again"
+  fi
+}
+
 # The other environment starts: stop the containers (they keep their data).
 do_stop() {
   log "stop the Tezza containers"
@@ -497,5 +519,6 @@ case "${PHASE}" in
   catalog) phase_catalog ;;
   setup) phase_setup ;;
   demo) phase_demo ;;
-  *) die "unknown or missing --phase (park, docker, source, pull, up, ready, catalog, setup, demo)" ;;
+  cases) phase_cases ;;
+  *) die "unknown or missing --phase (park, docker, source, pull, up, ready, catalog, setup, demo, cases)" ;;
 esac
