@@ -1,0 +1,19 @@
+# Informatiebeheer: the interactive demos XENA, MIRA and ELSA (each one
+# self-contained HTML file, EUPL-1.2) behind a small nginx with a Dutch start
+# page. run.sh downloads the demos at the commits in environment.json into
+# INFORMATIEBEHEER_SITE; this serves that folder. Starts in seconds.
+# Image pinned by digest (AGENTS rule 4), the same nginx as Haal Centraal.
+#
+# SPDX-License-Identifier: EUPL-1.2
+name: informatiebeheer
+
+services:
+  web:
+    image: docker.io/library/nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    ports:
+      - "${INFORMATIEBEHEER_PORT:-18796}:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ${INFORMATIEBEHEER_SITE:?run.sh sets it}/xena:/usr/share/nginx/html/xena:ro
+      - ${INFORMATIEBEHEER_SITE:?run.sh sets it}/mira:/usr/share/nginx/html/mira:ro
+      - ${INFORMATIEBEHEER_SITE:?run.sh sets it}/elsa:/usr/share/nginx/html/elsa:ro

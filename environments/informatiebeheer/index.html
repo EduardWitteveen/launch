@@ -1,0 +1,99 @@
+<!doctype html>
+<!-- Informatiebeheer's start page: what the demos XENA, MIRA and ELSA show, and where to begin.
+     SPDX-License-Identifier: EUPL-1.2 -->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informatiebeheer</title>
+<style>
+  :root { --bg: #f4f6f8; --card: #fff; --text: #1d2733; --muted: #5b6875; --accent: #1f5fbf; --line: #dde3ea; --tag: #eef3fb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #12171d; --card: #1b222b; --text: #e6ebf0; --muted: #9aa7b4; --accent: #6fa3ff; --line: #2c3540; --tag: #22304a; }
+  }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { margin: 0 0 4px; }
+  h2 { margin: 0; font-size: 1.25rem; }
+  h3 { margin: 16px 0 4px; font-size: .95rem; }
+  .lead { color: var(--muted); margin: 0 0 8px; }
+  .note { background: var(--tag); border-radius: 8px; padding: 10px 14px; font-size: .92rem; }
+  .card { background: var(--card); border-radius: 12px; padding: 20px; margin-top: 16px; border: 1px solid var(--line); }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .name { color: var(--muted); font-size: .9rem; }
+  a.open { display: inline-block; padding: 7px 14px; background: var(--accent); color: #fff; border-radius: 6px;
+           text-decoration: none; font-weight: 600; white-space: nowrap; }
+  ul { margin: 4px 0 0; padding-left: 20px; }
+  li { margin: 2px 0; }
+  .muted { color: var(--muted); font-size: .88rem; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Informatiebeheer</h1>
+  <p class="lead">Drie klikbare demo's van archiefwaardig werken, gezien door de ogen van een gewone medewerker van een
+    gemeente: bestanden, documenten en e-mail komen vanzelf goed vastgelegd in één register met bewaartermijnen,
+    metagegevens en toegang, op open standaarden en eigen opslag.</p>
+  <p class="note"><b>Een demo, geen product.</b> Personen, dossiers en zaaknummers zijn verzonnen. Een deel is
+    toekomstbeeld: met de schakelaar <i>Tijdvak</i> zie je wat vandaag al kan en wat later komt, en
+    <i>Groeipad</i> laat de stappen ernaartoe zien. Rechtsboven kies je de taal.</p>
+
+  <section class="card">
+    <div class="head"><h2>XENA <span class="name">archiefwaardige opslag voor de medewerker</span></h2>
+      <a class="open" href="xena/#nl">Open XENA</a></div>
+    <p>De netwerkschijven van een gemeente, vernieuwd: elke schijf is opslag in één Nextcloud-omgeving met
+      S3-objectopslag. Bewaartermijnen, legal hold, MDTO-metagegevens en toegangsregels zitten in de opslag zelf,
+      niet in de discipline van de medewerker.</p>
+    <h3>Wat je ziet</h3>
+    <ul>
+      <li><b>Verkenner</b>: de schijven M:, P:, I: en W: met een eigenschappenpaneel per bestand.</li>
+      <li><b>Documentbibliotheek</b> en <b>Teamkanaal</b>: hetzelfde register zoals het in een samenwerkingssite of
+        een teamkanaal verschijnt.</li>
+      <li><b>Zoeken</b>: op naam, kenmerken en inhoud, met filters; in de Woo-modus stel je een Woo-dossier samen.</li>
+      <li><b>Office Assistent</b>, <b>Architectuur</b> en <b>Techniek</b>: hoe het samenhangt, met de WebDAV- en
+        S3-berichten erbij. De balk <i>Onder de motorkap</i> toont bij elke handeling wat er naar de opslag gaat.</li>
+    </ul>
+    <p class="muted">Probeer: maak een dossier aan, zet een legal hold en kijk onder de motorkap wat de opslag
+      daarvan maakt.</p>
+  </section>
+
+  <section class="card">
+    <div class="head"><h2>MIRA <span class="name">de assistent in het kantoorpakket</span></h2>
+      <a class="open" href="mira/#nl">Open MIRA</a></div>
+    <p>Kwaliteit aan de bron: een paneel naast het document dat helpt met metagegevens, toegankelijkheid,
+      persoonsgegevens, classificeren, waarmerken en de workflow, in de tekstverwerker, het rekenblad, de
+      presentatie en de e-mail. Hetzelfde paneel werkt in verschillende kantoorpakketten.</p>
+    <h3>Wat je ziet</h3>
+    <ul>
+      <li><b>Tekst</b>: een raadsvoorstel met de assistent ernaast. Begin hier.</li>
+      <li><b>Rekenblad</b>: sla een nieuwe versie op en zie onder <i>Gebruikt in</i> welke stukken achterlopen.</li>
+      <li><b>Presentatie</b> en <b>E-mail</b>: het paneel volgt de dia; bij verzenden één vraag per bijlage.</li>
+      <li>Schakelaars: <i>Werkomgeving</i> (drie kantoorpakketten) en <i>Bekijk als</i> (de opsteller, of een inwoner
+        die het stuk later leest).</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <div class="head"><h2>ELSA <span class="name">e-mailarchivering</span></h2>
+      <a class="open" href="elsa/#nl">Open ELSA</a></div>
+    <p>Elk bericht komt vanzelf in het register en de objectopslag; de medewerker leest het gewoon in zijn eigen
+      mailprogramma via IMAP. Er blijft geen kopie in de mailomgeving achter.</p>
+    <h3>Wat je ziet</h3>
+    <ul>
+      <li><b>Postbus</b>: per bericht zakelijk of persoonlijk, met tien dagen bedenktijd; persoonlijk is versleuteld
+        en valt buiten het zoeken voor de Woo.</li>
+      <li><b>Doorstroom</b>: de weg van een bericht tot in het register, binnen een seconde.</li>
+      <li><b>Filters</b>, <b>Adresboek</b> en <b>Sleutels</b>: wat een filter niet mag, wie in het adresboek
+        staat, en wie bij persoonlijke berichten kan.</li>
+    </ul>
+    <p class="muted">Probeer: spring met de knoppen bovenaan tien dagen vooruit en kijk wat er met een bericht
+      gebeurt dat je niet hebt ingedeeld.</p>
+  </section>
+
+  <p class="muted" style="margin-top:24px">Bron en licentie (EUPL-1.2):
+    <a href="https://github.com/EHa-1999/XENA">XENA</a>, <a href="https://github.com/EHa-1999/MIRA">MIRA</a> en
+    <a href="https://github.com/EHa-1999/ELSA">ELSA</a>. Launch zet ze ongewijzigd neer, op een vastgelegde versie.</p>
+</main>
+</body>
+</html>

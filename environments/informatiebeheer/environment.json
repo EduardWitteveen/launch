@@ -1,0 +1,61 @@
+{
+  "title": "Informatiebeheer",
+  "version": "XENA, MIRA en ELSA (interactieve demo's)",
+  "summary": "Hoe archiefwaardig werken eruitziet voor een medewerker: netwerkschijven op Nextcloud met bewaartermijnen (XENA), een assistent in het kantoorpakket (MIRA) en e-mailarchivering (ELSA). Klikbare toekomstbeelden met verzonnen gegevens; start in een paar seconden.",
+  "url": "http://localhost:18796/",
+  "project": "informatiebeheer",
+  "health": {
+    "url": "http://localhost:18796/"
+  },
+  "login": "",
+  "links": [
+    {
+      "title": "XENA: archiefwaardige netwerkschijven (Verkenner, Teams, zoeken en Woo-dossier, architectuur, groeipad)",
+      "url": "http://localhost:18796/xena/#nl",
+      "login": ""
+    },
+    {
+      "title": "MIRA: de assistent in het kantoorpakket (raadsvoorstel, rekenblad, presentatie, e-mail)",
+      "url": "http://localhost:18796/mira/#nl",
+      "login": ""
+    },
+    {
+      "title": "ELSA: e-mailarchivering (postbus, doorstroom, filters, adresboek, sleutels)",
+      "url": "http://localhost:18796/elsa/#nl",
+      "login": ""
+    }
+  ],
+  "license": "EUPL-1.2",
+  "standards": [
+    "MDTO (metagegevens duurzaam toegankelijke overheidsinformatie)",
+    "Archiefwet en selectielijst",
+    "Wet open overheid (Woo)",
+    "WebDAV, S3 Object Lock, IMAP, CardDAV"
+  ],
+  "needs": {
+    "memory_gib": 1
+  },
+  "demos": [
+    {
+      "id": "xena",
+      "repo": "https://github.com/EHa-1999/XENA",
+      "rev": "adf4c17c95f8de34087a6982c15015c5b07926d6",
+      "sha256": "db71d143440c045436b12955bce91dc76f311cc5a7d5d21a7405cac3174e60c1",
+      "license": "EUPL-1.2"
+    },
+    {
+      "id": "mira",
+      "repo": "https://github.com/EHa-1999/MIRA",
+      "rev": "5d6718c67cadae2c088948c3629ba867d8b26de6",
+      "sha256": "0b62dd762b1bf1cc818b956239e8e7820e685016adf5915bf91784995bbab7b4",
+      "license": "EUPL-1.2"
+    },
+    {
+      "id": "elsa",
+      "repo": "https://github.com/EHa-1999/ELSA",
+      "rev": "a67e6d6c983d39e67d1994df942613cb69cd6281",
+      "sha256": "4366a7275ff601d83eccbdc1c653032b36868830ab60c4aacc6f65cb2790c6d4",
+      "license": "EUPL-1.2"
+    }
+  ]
+}
