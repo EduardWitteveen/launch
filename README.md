@@ -14,6 +14,19 @@ Met de **Launcher** start, stop en open je omgevingen op je eigen computer, éé
 | **D-OmniTwin** | De leefomgeving per buurt in één beeld: kaart, D-Omni Kompas en rapporten, met open data van Fryslân ([D-OmniTwin](https://github.com/Sudwest-Fryslan/D-OmniTwin) van Súdwest-Fryslân). Onder *Aanpassen*: de demodata, inloggen met Keycloak en gegevens van Súdwest-Fryslân uit een eigen bron. | ongeveer 5 minuten (ongeveer 1 GB downloaden en de open data ophalen) |
 | **Haal Centraal** | Persoonsgegevens opvragen bij de BRP-testversie van de RvIG, met fictieve testpersonen. Klein en snel: handig om de Launcher te leren kennen. | een minuut |
 
+**Op [OpenCatalogi](https://opencatalogi.nl/)** (de catalogus van open-source overheidssoftware), nagekeken op 6 november 2026:
+
+| Omgeving | Op OpenCatalogi |
+|---|---|
+| Mijn Bureau | ja: [MijnBureau deployment](https://opencatalogi.nl/publications/42b6c5e4-daff-40fa-85f6-c9b929e223db) |
+| Tezza | Tezza zelf niet; wel de onderdelen [Alfresco](https://opencatalogi.nl/publications/6f7535ea-b3f7-4f26-b048-559b66a6eaac) en [Valtimo](https://opencatalogi.nl/publications/cee37167-a8a6-4217-bc30-aff6dd48a628) |
+| Nextcloud Common Ground | [Nextcloud](https://opencatalogi.nl/publications/876bdb61-324a-4b3b-8bf1-0c5214d093b3) wel; de apps van Conduction (OpenRegister, Dossiq, Pipelinq, Portaliq) niet |
+| Valtimo | ja: [Valtimo](https://opencatalogi.nl/publications/cee37167-a8a6-4217-bc30-aff6dd48a628) |
+| Informatiebeheer | nee (XENA, MIRA en ELSA) |
+| D-OmniTwin | nee, al heeft het een `publiccode.yml`: OpenCatalogi is sinds 19 maart 2026 niet bijgewerkt ([opencatalogi#1993](https://github.com/ConductionNL/opencatalogi/issues/1993); gemeld in [D-OmniTwin#490](https://github.com/Sudwest-Fryslan/D-OmniTwin/issues/490)) |
+| Haal Centraal | nee |
+| Launch zelf | nog niet; het heeft nu een [`publiccode.yml`](publiccode.yml) |
+
 Launch is een **experimenteel en onofficieel** project. Het is geen product van Contezza, Conduction, Ritense, de RvIG, Mijn Bureau of een gemeente. Het komt voort uit [dawo-appliance](https://github.com/EduardWitteveen/dawo-appliance) en werkt ook los daarvan.
 
 ## Installeren (Windows 10/11)

@@ -43,6 +43,15 @@
     }
   ],
   "license": "EUPL-1.2",
+  "opencatalogi": {
+    "checked": "2026-11-06",
+    "found": [
+      {
+        "name": "Valtimo",
+        "url": "https://opencatalogi.nl/publications/cee37167-a8a6-4217-bc30-aff6dd48a628"
+      }
+    ]
+  },
   "standards": [
     "Zaakgericht werken (GZAC)",
     "BPMN 2.0",

@@ -21,6 +21,11 @@
     }
   ],
   "license": "EUPL-1.2",
+  "opencatalogi": {
+    "checked": "2026-11-06",
+    "found": [],
+    "note": "Niet: de catalogus is sinds 19 maart 2026 niet bijgewerkt (ConductionNL/opencatalogi#1993); gemeld in Sudwest-Fryslan/D-OmniTwin#490."
+  },
   "standards": [
     "CBS-gebiedsindelingen (buurten, wijken, gemeenten)",
     "OGC API Features (pg_featureserv)",

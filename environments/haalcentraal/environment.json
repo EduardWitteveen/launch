@@ -10,5 +10,10 @@
   "login": "",
   "needs": {
     "memory_gib": 1
+  },
+  "opencatalogi": {
+    "checked": "2026-11-06",
+    "found": [],
+    "note": "De BRP personen-mock niet."
   }
 }

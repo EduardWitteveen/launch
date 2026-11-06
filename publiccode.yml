@@ -1,0 +1,129 @@
+# publiccode.yml for Launch, so that software catalogues such as OpenCatalogi
+# find it (they look for this file in public repositories).
+# Standard: https://yml.publiccode.tools/ — check with publiccode-parser
+# (docker run --rm -v "$PWD:/app" italiangovernment/publiccode-parser-go:v5 /app/publiccode.yml).
+#
+# To keep up to date:
+# - softwareVersion / releaseDate: set at the first release that is not a
+#   release candidate, equal to VERSION in launch.py. Left out until then.
+# - the environments in longDescription and dependsOn: with environments/catalog.json.
+# - maintenance: an experiment without a maintenance guarantee.
+#
+# SPDX-License-Identifier: EUPL-1.2
+
+publiccodeYmlVersion: "0"
+
+name: Launch
+url: "https://github.com/EduardWitteveen/launch"
+
+platforms:
+  - windows
+  - linux
+
+categories:
+  - it-management
+  - test-management
+
+developmentStatus: development
+
+softwareType: "standalone/desktop"
+
+intendedAudience:
+  countries:
+    - nl
+  scope:
+    - local-authorities
+    - government
+
+description:
+  nl:
+    localisedName: Launch
+    shortDescription: >-
+      Experimenteel: start, stop en open complete demo-omgevingen van
+      open-source overheidssoftware op je eigen computer, één tegelijk.
+    longDescription: |
+      Met Launch probeer je open-source software voor de overheid uit op je
+      eigen computer, zonder er verstand van te hebben hoe die software wordt
+      geïnstalleerd. De Launcher is een pagina in je browser met een kaart per
+      omgeving: je drukt op Starten, ziet welke stap bezig is en hoe lang het
+      nog duurt, en opent de omgeving als hij klaar is. Er draait er één
+      tegelijk.
+
+      Nu zijn dat Tezza (zaak- en documentbeheer van Contezza), Nextcloud
+      Common Ground (de apps van Conduction), Valtimo (GZAC), D-OmniTwin (de
+      leefomgeving per buurt, van Súdwest-Fryslân), Informatiebeheer (de
+      demo's XENA, MIRA en ELSA) en Haal Centraal (de BRP-testversie van de
+      RvIG). Onder Aanpassen zet je onderdelen en demodata aan of uit.
+
+      Launch controleert vóór een start wat bekend is dat misgaat, zegt wat
+      er aan de hand is en lost het op als je dat wilt. Elke image en elke bron
+      ligt vast op een exacte versie. Launch is experimenteel en onofficieel:
+      geen product van de makers van die software of van een gemeente, en niet
+      bedoeld voor productie of echte gegevens.
+    documentation: "https://github.com/EduardWitteveen/launch/blob/main/README.md"
+    features:
+      - Een Launcher in de browser met een kaart per omgeving
+      - Starten, stoppen en openen, één omgeving tegelijk, met de voortgang per stap
+      - Bekende problemen vóór de start, met een oplossing die eerst wordt aangekondigd
+      - Onderdelen en demodata aan of uit (Aanpassen)
+      - Een commandline (launch list, status, check, fix, start, stop)
+      - Vaste versies van alle images en bronnen
+  en:
+    localisedName: Launch
+    shortDescription: >-
+      Experimental: start, stop and open complete demo environments of open
+      source government software on your own computer, one at a time.
+    longDescription: |
+      Launch lets you try open source software for government on your own
+      computer, without knowing how that software is installed. The Launcher
+      is a page in your browser with a card per environment: press Start, see
+      which step is running and how long it will take, and open the
+      environment when it is ready. One runs at a time.
+
+      The environments are Tezza (case and document management by Contezza),
+      Nextcloud Common Ground (Conduction's apps), Valtimo (GZAC), D-OmniTwin
+      (the living environment per neighbourhood, by Súdwest-Fryslân),
+      Informatiebeheer (the demos XENA, MIRA and ELSA) and Haal Centraal (the
+      RvIG's test version of the BRP). Parts and demo data can be switched on
+      or off.
+
+      Before a start Launch checks for known problems, says what is wrong and
+      fixes it when you want it to. Every image and source is pinned to an
+      exact version. Launch is experimental and unofficial: not a product of
+      the makers of that software or of a municipality, and not meant for
+      production or real data.
+    documentation: "https://github.com/EduardWitteveen/launch/blob/main/README.md"
+    features:
+      - A Launcher in the browser with a card per environment
+      - Start, stop and open, one environment at a time, with progress per step
+      - Known problems before a start, with a fix that is announced first
+      - Parts and demo data on or off
+      - A command line (launch list, status, check, fix, start, stop)
+      - Pinned versions of every image and source
+
+legal:
+  license: EUPL-1.2
+  repoOwner: Eduard Witteveen
+
+maintenance:
+  type: internal
+  contacts:
+    - name: Eduard Witteveen
+
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - nl
+    - en
+
+dependsOn:
+  open:
+    - name: Python 3
+      optional: false
+    - name: Git for Windows (bash)
+      optional: false
+    - name: Rancher Desktop
+      optional: true
+  proprietary:
+    - name: Docker Desktop
+      optional: true

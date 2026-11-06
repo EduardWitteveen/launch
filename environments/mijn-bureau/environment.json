@@ -5,6 +5,15 @@
   "url": "https://bureaublad.dawo.internal",
   "login": "launcher / launcher",
   "license": "EUPL-1.2",
+  "opencatalogi": {
+    "checked": "2026-11-06",
+    "found": [
+      {
+        "name": "MijnBureau deployment",
+        "url": "https://opencatalogi.nl/publications/42b6c5e4-daff-40fa-85f6-c9b929e223db"
+      }
+    ]
+  },
   "standards": [
     "OpenID Connect (NL GOV-profiel)",
     "OAuth 2.0 (NL GOV-profiel)",

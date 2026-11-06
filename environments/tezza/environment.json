@@ -23,6 +23,20 @@
     }
   ],
   "license": "NOASSERTION",
+  "opencatalogi": {
+    "checked": "2026-11-06",
+    "found": [
+      {
+        "name": "Alfresco",
+        "url": "https://opencatalogi.nl/publications/6f7535ea-b3f7-4f26-b048-559b66a6eaac"
+      },
+      {
+        "name": "Valtimo",
+        "url": "https://opencatalogi.nl/publications/cee37167-a8a6-4217-bc30-aff6dd48a628"
+      }
+    ],
+    "note": "Tezza zelf (tezza-packaging van Contezza) niet; wel twee onderdelen."
+  },
   "standards": [
     "Documentbeheer (Alfresco)",
     "OpenID Connect",

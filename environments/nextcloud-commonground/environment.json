@@ -6,6 +6,16 @@
   "project": "dossiq-demo",
   "login": "launcher / launcher (of admin / admin)",
   "license": "EUPL-1.2",
+  "opencatalogi": {
+    "checked": "2026-11-06",
+    "found": [
+      {
+        "name": "NextCloud Server",
+        "url": "https://opencatalogi.nl/publications/876bdb61-324a-4b3b-8bf1-0c5214d093b3"
+      }
+    ],
+    "note": "De apps van Conduction (OpenRegister, Dossiq, Pipelinq, Portaliq, OpenCatalogi) niet; wel Nextcloud."
+  },
   "standards": [
     "Common Ground",
     "Zaakgericht werken",

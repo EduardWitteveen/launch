@@ -26,6 +26,11 @@
     }
   ],
   "license": "EUPL-1.2",
+  "opencatalogi": {
+    "checked": "2026-11-06",
+    "found": [],
+    "note": "XENA, MIRA en ELSA niet."
+  },
   "standards": [
     "MDTO (metagegevens duurzaam toegankelijke overheidsinformatie)",
     "Archiefwet en selectielijst",
