@@ -1,0 +1,42 @@
+# Our changes to D-OmniTwin's docker-compose.yml and docker-compose.images.yml
+# (v0.6.1), kept apart from its files. Applied as a third -f file. Each change
+# and why:
+#
+#   image: ...@sha256:...   pinned by digest (AGENTS rule 4); the tags are
+#                           upstream's own for v0.6.1
+#   pull_policy: missing    images.yml says "always"; a second start works
+#                           without the internet
+#
+# The project (d-omnitwin-launch) and the port (18797) come from run.sh, so a
+# D-OmniTwin of its own on this computer keeps its containers and volumes.
+#
+# SPDX-License-Identifier: EUPL-1.2
+x-backend-image: &backend-image docker.io/sudwestfryslan/d-omnitwin:0.6.1@sha256:e80136df863910be5445c4e7a63c44d27e19193645a5825304c27d8183a0f15c
+
+services:
+  traefik:
+    image: docker.io/library/traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
+  postgres:
+    image: docker.io/sudwestfryslan/d-omnitwin-db:0.6.1@sha256:bdcf3729448dc2558dc89820c1fe8ed796eb910e3066135fb40fb6294d7e4e2a
+    pull_policy: missing
+  db-init:
+    image: *backend-image
+    pull_policy: missing
+  backend:
+    image: *backend-image
+    pull_policy: missing
+  web:
+    image: docker.io/sudwestfryslan/d-omnitwin-web:0.6.1@sha256:6e3cc96cf80554c6b783326f1d4b4df140df3ce6e48cc3be1e58d8ffb637df70
+    pull_policy: missing
+  postgrest:
+    image: docker.io/postgrest/postgrest:v16.4@sha256:d155c6718ed9a9f990d159a2ab7c0a3f16944dbb6d0a0344557421042acfe0df
+  pg_featureserv:
+    image: docker.io/pramsey/pg_featureserv:20250917@sha256:2f1cf3adbf159b440098b7b4d5c75d9679baae5c79aed7560a84a15aecddf886
+  keycloak-db-init:
+    image: *backend-image
+    pull_policy: missing
+  keycloak-demo:
+    image: *backend-image
+    pull_policy: missing
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.0@sha256:27b3230fbabb8c9ff3c66c864cf09dcd8a41aca82e5100679d109ef0eeb05741

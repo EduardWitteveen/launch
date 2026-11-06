@@ -259,6 +259,13 @@ Gebouwd volgens §1–§6, met deze keuzes in de uitwerking:
 - **Het venster bij KLAAR:** het tabblad dat startte, opent het; houdt de pop-upblokker het tegen, dan zegt de kaart dat, met wat je kunt doen.
 - **De commandline:** `launch check` geeft 0 (in orde), 3 (probleem) of 4 (voorwaarde). Het startproces is het verborgen subcommando `supervise`. `launch --version` komt uit de constante `VERSION` in `launch.py`.
 - **Bronnen en zaakpakketten** (§6, 26 oktober 2026): `lib/gzac-cases.py` laadt de pakketten uit `sources/gzac` in de GZAC van Tezza (als laatste stap van de start; de rollen als autorisatieprofielen) en van Valtimo. Met Tezza echt geprobeerd; met Valtimo nog niet. GZAC wijst een taak toe aan het gebruikers-id (`/v1/users/<naam>`) en laat alleen wie de taak heeft hem afronden.
+- **D-OmniTwin** (#2, 6 november 2026): versie 0.6.1 met de kant-en-klare images, als demo-omgeving (`admin`/`admin`), op poort 18797 en in een eigen compose-project (`d-omnitwin-launch`), zodat een eigen installatie van D-OmniTwin op dezelfde computer er geen last van heeft. De wachtwoorden van de database maakt Launch één keer en bewaart ze in de map van Launch. Keuzes (1C6):
+  - *Demodata van Fryslân* (data, standaard aan): de use cases met open data van CBS, RIVM, PDOK en Politie. Eén vinkje, geen vinkje per use case: ze hangen van elkaar af en D-OmniTwin installeert ze samen.
+  - *Inloggen met Keycloak* (onderdeel, standaard uit): inloggen via Keycloak met de demo-accounts `admin`/`admin` en `gebruiker`/`gebruiker`. Uit na aan: Keycloak stopt en je logt weer in zonder Keycloak.
+  - *Gegevens van Súdwest-Fryslân uit een eigen bron* (data, bron `sources/omnitwin-swf`): wat niet open is, in submappen: `geo/` (GeoPackages uit de GeoServer), `docs/` (documenten), `dump/` en `db-dump/` (de huidige gebiedsmonitor), `export/` (een andere D-OmniTwin). Elke submap die er is, krijgt D-OmniTwin als `SWF_GEO_DIR`, `SWF_DOCS_DIR`, `SWF_DUMP_DIR`, `SWF_DB_DUMP` en `SWF_EXPORT_DIR`; wat ontbreekt, slaat D-OmniTwin over.
+  - De AI-assistent is geen keuze: Launch kan er niets voor installeren. Draait Ollama op de computer, dan gebruikt D-OmniTwin die vanzelf; anders werkt de rest gewoon.
+  - D-OmniTwin laadt data alleen bij de eerste start, in een lege database. Zet je een data-keuze later aan, of verandert er iets in de bron, dan laadt de stap "Data laden die er nog niet is" alleen dat: de demodata met alle use cases, de bron alleen met de use cases van Súdwest-Fryslân. Launch onthoudt wat er geladen is, bij de database, en van de bron een vingerafdruk (namen, groottes en datums van de bestanden).
+  - Geprobeerd op 6 november 2026: eerste start in 4 minuten, Keycloak aan en weer uit, een bron die erbij komt en verandert. In de open data sloeg D-OmniTwin zelf `cbs-kerncijfers` over: CBS gaf de personenauto-kolommen van tabel 85984NED (2024) een andere naam. Dat is opgelost in D-OmniTwin (Sudwest-Fryslan/D-OmniTwin#439), maar na 0.6.1; met de volgende release gaat de versie in Launch mee.
 - **Tests:** `python -m unittest discover tests` (de overgangen van de Launcher, de commandline, de keuzes); geen Docker nodig.
 
 ## 8. Nog te doen
@@ -273,6 +280,7 @@ Gebouwd volgens §1–§6, met deze keuzes in de uitwerking:
 8. **De keuzes echt proberen** met Tezza, Nextcloud Common Ground en Valtimo: de scripts zijn alleen op syntax en met droge runs gecontroleerd.
 9. **Bronnen van een URL** (§6): nu alleen een map onder `sources/`; later haalt Launch een bron zelf op, bijvoorbeeld uit een git-server van de gemeente.
 10. **Valtimo: zaakpakketten uit een bron.** Een keuze van Valtimo laadt een zaakpakket (BPMN, DMN, formulieren, zaaktype, demozaken) uit een bron in GZAC. Launch bevat alleen de lader; de pakketten zelf staan in de bron.
+11. **D-OmniTwin met de echte bron van Súdwest-Fryslân** proberen (nu alleen met een lege bron), en de link naar de beheerconsole van Keycloak tonen als Keycloak aan staat (punt 3).
 
 ## Bijlage: wat er misging vóór dit ontwerp (25 oktober 2026)
 

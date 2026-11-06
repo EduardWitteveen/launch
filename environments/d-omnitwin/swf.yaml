@@ -1,0 +1,24 @@
+# The choice "Gegevens van Súdwest-Fryslân uit een eigen bron" (swf): the
+# source's folder (docs §6) in db-init, its subfolders as D-OmniTwin's source
+# folders. run.sh says which subfolders are there (OMNITWIN_SWF_<VAR>=1; the
+# paths stay here, so Git Bash does not turn them into Windows paths); one that
+# is not there stays empty, "not set", and D-OmniTwin skips what needs it.
+# Only applied when the choice is on and the source is there.
+#
+#   geo/      SWF_GEO_DIR      GeoPackages from Súdwest-Fryslân's GeoServer
+#   docs/     SWF_DOCS_DIR     documents (coordinator areas, projects, layers)
+#   dump/     SWF_DUMP_DIR     the current area monitor's API dump
+#   db-dump/  SWF_DB_DUMP      its database dump (goes before dump/)
+#   export/   SWF_EXPORT_DIR   an export of another D-OmniTwin
+#
+# SPDX-License-Identifier: EUPL-1.2
+services:
+  db-init:
+    environment:
+      - SWF_GEO_DIR=${OMNITWIN_SWF_GEO_DIR:+/bronnen/swf/geo}
+      - SWF_DOCS_DIR=${OMNITWIN_SWF_DOCS_DIR:+/bronnen/swf/docs}
+      - SWF_DUMP_DIR=${OMNITWIN_SWF_DUMP_DIR:+/bronnen/swf/dump}
+      - SWF_DB_DUMP=${OMNITWIN_SWF_DB_DUMP:+/bronnen/swf/db-dump}
+      - SWF_EXPORT_DIR=${OMNITWIN_SWF_EXPORT_DIR:+/bronnen/swf/export}
+    volumes:
+      - "${OMNITWIN_SWF:?run.sh sets it}:/bronnen/swf:ro"

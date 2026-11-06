@@ -11,6 +11,7 @@ Met de **Launcher** start, stop en open je omgevingen op je eigen computer, éé
 | **Nextcloud Common Ground** | De apps van Conduction (Dossiq, Pipelinq, Portaliq, OpenRegister) in Nextcloud, met demozaken. | ongeveer 20 minuten |
 | **Valtimo** | Zaakgericht werken (GZAC): een aanvraag evenementenvergunning behandelen, met Open Zaak, Objecten en een burgerformulier (Open Formulieren). | ongeveer 30 minuten |
 | **Informatiebeheer** | Drie klikbare demo's van archiefwaardig werken voor de medewerker: netwerkschijven op Nextcloud met bewaartermijnen ([XENA](https://github.com/EHa-1999/XENA)), een assistent in het kantoorpakket ([MIRA](https://github.com/EHa-1999/MIRA)) en e-mailarchivering ([ELSA](https://github.com/EHa-1999/ELSA)). Toekomstbeelden met verzonnen gegevens. | een minuut |
+| **D-OmniTwin** | De leefomgeving per buurt in één beeld: kaart, D-Omni Kompas en rapporten, met open data van Fryslân ([D-OmniTwin](https://github.com/Sudwest-Fryslan/D-OmniTwin) van Súdwest-Fryslân). Onder *Aanpassen*: de demodata, inloggen met Keycloak en gegevens van Súdwest-Fryslân uit een eigen bron. | ongeveer 5 minuten (ongeveer 1 GB downloaden en de open data ophalen) |
 | **Haal Centraal** | Persoonsgegevens opvragen bij de BRP-testversie van de RvIG, met fictieve testpersonen. Klein en snel: handig om de Launcher te leren kennen. | een minuut |
 
 Launch is een **experimenteel en onofficieel** project. Het is geen product van Contezza, Conduction, Ritense, de RvIG, Mijn Bureau of een gemeente. Het komt voort uit [dawo-appliance](https://github.com/EduardWitteveen/dawo-appliance) en werkt ook los daarvan.
@@ -38,6 +39,9 @@ Is er net Git, Python of Rancher Desktop bijgekomen en doet de Launcher niets? H
 - **Rondgang**: de Launcher start alle omgevingen om de beurt, laat ze een tijdje aan staan en gaat door naar de volgende. Zo zie je zonder op te letten of alles nog werkt. Je zet hem uit met *Rondgang stoppen*.
 
 **Tezza:** log in met `launcher` / `launcher`. Dat is een demo-gebruiker met dezelfde groepen als de beheerder. Er staan vijf fictieve demozaken klaar, bij de zaaktypes Omgevingsvergunning, Evenementenvergunning en Bezwaarschrift van Súdwest-Fryslân, met een status, een aanvrager (testpersonen uit Haal Centraal) en documenten.
+
+**D-OmniTwin:** log in bij de beheeromgeving met `admin` / `admin` (een demo-omgeving: de gele balk zegt dat ook). De AI-assistent werkt als Ollama op je computer draait; de rest werkt ook zonder.
+
 ## Wat je computer nodig heeft
 
 - Windows 10 of 11, 64-bit, met beheerdersrechten voor de installatie.

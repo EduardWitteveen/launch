@@ -1,0 +1,81 @@
+{
+  "title": "D-OmniTwin",
+  "version": "0.6.1 (demo-omgeving)",
+  "summary": "De leefomgeving per buurt in één beeld: een kaart met 3D-panden, het D-Omni Kompas (indicatoren in 12 thema's, vergeleken met een referentiegroep) en rapporten, met open data van Fryslân. Van Súdwest-Fryslân, open source.",
+  "url": "http://localhost:18797/",
+  "project": "d-omnitwin-launch",
+  "health": {
+    "url": "http://localhost:18797/health"
+  },
+  "login": "Beheer: admin / admin",
+  "links": [
+    {
+      "title": "Beheeromgeving (indicatoren, Kompas, kaartlagen, AI)",
+      "url": "http://localhost:18797/admin/",
+      "login": "admin / admin"
+    },
+    {
+      "title": "API-documentatie",
+      "url": "http://localhost:18797/docs",
+      "login": ""
+    }
+  ],
+  "license": "EUPL-1.2",
+  "standards": [
+    "CBS-gebiedsindelingen (buurten, wijken, gemeenten)",
+    "OGC API Features (pg_featureserv)",
+    "DCAT",
+    "OpenID Connect (Keycloak, optioneel)"
+  ],
+  "needs": {
+    "memory_gib": 8
+  },
+  "source": {
+    "repo": "https://github.com/Sudwest-Fryslan/D-OmniTwin",
+    "tag": "v0.6.1",
+    "rev": "2a4ca419e3985949524b2d780f4fa613a4807e09"
+  },
+  "options": [
+    {
+      "id": "demo",
+      "kind": "data",
+      "title": {
+        "nl": "Demodata van Fryslân (open data van CBS, RIVM, PDOK en Politie)"
+      },
+      "about": {
+        "nl": "De use cases van D-OmniTwin, zoals hittestress en energiearmoede in Bolsward. De eerste keer haalt D-OmniTwin de data op bij de bron; dat kost een paar minuten. Uit: D-OmniTwin zonder data, klaar voor eigen data."
+      },
+      "default": true,
+      "needs": []
+    },
+    {
+      "id": "keycloak",
+      "kind": "part",
+      "title": {
+        "nl": "Inloggen met Keycloak"
+      },
+      "about": {
+        "nl": "Inloggen via Keycloak, met de demo-accounts admin / admin (beheerder) en gebruiker / gebruiker (lezer)."
+      },
+      "default": false
+    },
+    {
+      "id": "swf",
+      "kind": "data",
+      "title": {
+        "nl": "Gegevens van Súdwest-Fryslân uit een eigen bron"
+      },
+      "about": {
+        "nl": "Wat niet open is: de GeoPackages uit de GeoServer, documenten, en exports en dumps van de huidige gebiedsmonitor van Súdwest-Fryslân. Die bestanden staan niet in git."
+      },
+      "default": true,
+      "needs": [],
+      "source": {
+        "path": "sources/omnitwin-swf",
+        "title": {
+          "nl": "de gegevens van Súdwest-Fryslân (mappen geo, docs, dump, db-dump, export)"
+        }
+      }
+    }
+  ]
+}
